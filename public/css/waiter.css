@@ -1,0 +1,327 @@
+/* ===================================================================
+   public/css/waiter.css — Interface serveur RESTOSCAN
+   Fond clair, lisible en salle, cards grandes et tactiles
+   =================================================================== */
+
+/* ─── Layout ─────────────────────────────────────────────────────── */
+.waiter-layout {
+    background: #f0f4f8;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ─── Header ─────────────────────────────────────────────────────── */
+.waiter-header {
+    background: white;
+    border-bottom: 2px solid var(--color-border);
+    padding: 0 var(--space-6);
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: var(--shadow-sm);
+}
+.waiter-header__logo {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: var(--color-primary);
+}
+.waiter-header__logo i { font-size: 1.3rem; }
+.waiter-header__right {
+    display: flex;
+    align-items: center;
+    gap: var(--space-5);
+}
+.waiter-header__user {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--color-muted);
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+.waiter-clock {
+    font-size: 1.2rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-text);
+}
+.waiter-logout {
+    color: var(--color-muted);
+    font-size: 1.1rem;
+    padding: var(--space-2);
+    border-radius: var(--radius-sm);
+    transition: color var(--transition);
+}
+.waiter-logout:hover { color: var(--color-danger); }
+
+/* ─── Main ───────────────────────────────────────────────────────── */
+.waiter-main {
+    flex: 1;
+    padding: var(--space-6);
+    max-width: 1400px;
+    margin: 0 auto;
+    width: 100%;
+}
+.waiter-page {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-8);
+}
+
+/* ─── Section ────────────────────────────────────────────────────── */
+.waiter-section__header {
+    margin-bottom: var(--space-4);
+}
+.waiter-section__title {
+    font-size: 1.2rem;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+}
+.waiter-section__title--ready    { color: #15803d; }
+.waiter-section__title--preparing { color: #c2410c; }
+
+.waiter-section--secondary { opacity: 0.85; }
+
+/* ─── Badge compteur ─────────────────────────────────────────────── */
+.waiter-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: var(--radius-full);
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+.waiter-badge--ready    { background: #dcfce7; color: #15803d; }
+.waiter-badge--preparing { background: #ffedd5; color: #c2410c; }
+
+/* ─── Grille des cards ───────────────────────────────────────────── */
+.waiter-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: var(--space-4);
+}
+.waiter-cards--small {
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: var(--space-3);
+}
+
+/* ─── Card principale (commande prête) ───────────────────────────── */
+.waiter-card {
+    background: white;
+    border-radius: var(--radius-xl);
+    border: 2px solid #bbf7d0;
+    overflow: hidden;
+    box-shadow: 0 4px 16px rgba(21, 128, 61, 0.1);
+    display: flex;
+    flex-direction: column;
+    animation: cardIn 0.3s ease;
+    transition: transform var(--transition), box-shadow var(--transition);
+}
+.waiter-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(21, 128, 61, 0.15);
+}
+@keyframes cardIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.waiter-card__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-4) var(--space-5);
+    background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+    border-bottom: 1px solid #bbf7d0;
+}
+.waiter-card__table {
+    font-size: 1.3rem;
+    font-weight: 800;
+    color: #15803d;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+.waiter-card__time {
+    font-size: 0.85rem;
+    color: var(--color-muted);
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+}
+
+.waiter-card__items {
+    list-style: none;
+    padding: var(--space-4) var(--space-5);
+    flex: 1;
+    border-bottom: 1px solid var(--color-border);
+}
+.waiter-card__item {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-2);
+    padding: var(--space-2) 0;
+    font-size: 1rem;
+    border-bottom: 1px solid #f3f4f6;
+}
+.waiter-card__item:last-child { border-bottom: none; }
+.waiter-card__qty {
+    font-weight: 800;
+    color: var(--color-primary);
+    min-width: 28px;
+    font-size: 1.1rem;
+}
+.waiter-card__name { font-weight: 600; flex: 1; }
+.waiter-card__note {
+    font-size: 0.75rem;
+    color: #c2410c;
+    background: #fff7ed;
+    padding: 0.15rem 0.5rem;
+    border-radius: var(--radius-sm);
+    font-style: italic;
+}
+
+.waiter-card__order-note {
+    padding: var(--space-3) var(--space-5);
+    font-size: 0.85rem;
+    color: var(--color-muted);
+    background: #fafafa;
+    border-bottom: 1px solid var(--color-border);
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-style: italic;
+}
+
+.waiter-card__total {
+    padding: var(--space-3) var(--space-5);
+    font-size: 0.9rem;
+    color: var(--color-muted);
+    border-bottom: 1px solid var(--color-border);
+}
+.waiter-card__total strong {
+    color: var(--color-text);
+    font-size: 1rem;
+}
+
+/* ─── Bouton "Servi" ─────────────────────────────────────────────── */
+.waiter-card__btn {
+    width: 100%;
+    padding: 1rem var(--space-5);
+    background: #16a34a;
+    color: white;
+    border: none;
+    font-size: 1rem;
+    font-weight: 700;
+    font-family: var(--font-sans);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-3);
+    transition: background var(--transition);
+}
+.waiter-card__btn:hover  { background: #15803d; }
+.waiter-card__btn:active { background: #166534; }
+.waiter-card__btn:disabled {
+    background: #d1d5db;
+    cursor: not-allowed;
+}
+
+/* ─── Card petite (en préparation) ───────────────────────────────── */
+.waiter-card-sm {
+    background: white;
+    border-radius: var(--radius-lg);
+    border: 1px solid #fed7aa;
+    padding: var(--space-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    animation: cardIn 0.3s ease;
+}
+.waiter-card-sm__table {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #c2410c;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+.waiter-card-sm__items {
+    font-size: 0.85rem;
+    color: var(--color-muted);
+    line-height: 1.5;
+}
+.waiter-card-sm__time {
+    font-size: 0.8rem;
+    color: var(--color-muted);
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    margin-top: var(--space-1);
+}
+
+/* ─── État vide ──────────────────────────────────────────────────── */
+.waiter-empty {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: var(--space-12) var(--space-4);
+    color: var(--color-muted);
+}
+.waiter-empty i {
+    font-size: 3rem;
+    display: block;
+    margin-bottom: var(--space-3);
+    color: #16a34a;
+    opacity: 0.3;
+}
+.waiter-empty--sm { padding: var(--space-6); }
+.waiter-empty--sm i { font-size: 1.5rem; }
+
+/* ─── Toasts ─────────────────────────────────────────────────────── */
+.waiter-toasts {
+    position: fixed;
+    top: 80px;
+    right: var(--space-5);
+    z-index: 500;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+.waiter-toast {
+    background: #15803d;
+    color: white;
+    border-radius: var(--radius-md);
+    padding: 0.875rem var(--space-5);
+    font-size: 0.9rem;
+    font-weight: 600;
+    box-shadow: var(--shadow-lg);
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    animation: toastIn 0.3s ease;
+}
+@keyframes toastIn {
+    from { opacity: 0; transform: translateX(20px); }
+    to   { opacity: 1; transform: translateX(0); }
+}
+
+/* ─── Responsive ─────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+    .waiter-main { padding: var(--space-4); }
+    .waiter-cards { grid-template-columns: 1fr; }
+    .waiter-header { padding: 0 var(--space-4); }
+    .waiter-clock { display: none; }
+}

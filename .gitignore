@@ -1,0 +1,28 @@
+# Dependances Composer
+/vendor/
+
+# Images uploadees (propres a chaque serveur)
+/public/img/menu/*.jpg
+/public/img/menu/*.jpeg
+/public/img/menu/*.png
+/public/img/menu/*.webp
+/public/img/menu/*.gif
+
+# QR codes generes (regeneres automatiquement)
+/qrcodes/*.png
+
+# Fichiers de config locaux (ne jamais committer les secrets)
+/config/config.local.php
+.env
+.env.local
+
+# Logs
+*.log
+/logs/
+
+# OS / editeurs
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp

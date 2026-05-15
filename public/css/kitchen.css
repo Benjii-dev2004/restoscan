@@ -1,0 +1,278 @@
+/* ===================================================================
+   public/css/kitchen.css — Interface cuisine RESTOSCAN
+   Fond sombre, texte grand, optimisé tablette/écran mural
+   =================================================================== */
+
+:root {
+    --kitchen-bg:       #0f1117;
+    --kitchen-surface:  #1a1d27;
+    --kitchen-border:   #2a2d3a;
+    --kitchen-text:     #f1f5f9;
+    --kitchen-muted:    #94a3b8;
+
+    --col-waiting:   #f59e0b;
+    --col-preparing: #ef4444;
+    --col-ready:     #22c55e;
+}
+
+/* ─── Layout cuisine ─────────────────────────────────────────────── */
+.kitchen-layout {
+    background: var(--kitchen-bg);
+    color: var(--kitchen-text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ─── Header cuisine ─────────────────────────────────────────────── */
+.kitchen-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 var(--space-6);
+    height: 60px;
+    background: var(--kitchen-surface);
+    border-bottom: 1px solid var(--kitchen-border);
+    flex-shrink: 0;
+}
+.kitchen-header__logo {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: var(--col-waiting);
+}
+.kitchen-header__logo i { font-size: 1.3rem; }
+.kitchen-header__meta {
+    display: flex;
+    align-items: center;
+    gap: var(--space-5);
+}
+.kitchen-clock {
+    font-size: 1.5rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--kitchen-text);
+    letter-spacing: 1px;
+}
+.kitchen-user {
+    font-size: 0.9rem;
+    color: var(--kitchen-muted);
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+.btn-logout {
+    color: var(--kitchen-muted);
+    padding: var(--space-2);
+    border-radius: var(--radius-sm);
+    transition: color var(--transition);
+    font-size: 1.1rem;
+}
+.btn-logout:hover { color: var(--col-waiting); }
+
+/* ─── Main cuisine ───────────────────────────────────────────────── */
+.kitchen-main {
+    flex: 1;
+    overflow: hidden;
+    padding: var(--space-4);
+}
+
+/* ─── Kanban ─────────────────────────────────────────────────────── */
+.kanban {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-4);
+    height: 100%;
+}
+.kanban__col {
+    background: var(--kitchen-surface);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--kitchen-border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+.kanban__col-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-4) var(--space-5);
+    font-size: 0.95rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid var(--kitchen-border);
+}
+.kanban__col-header i { font-size: 1.1rem; }
+.kanban__col-header--waiting   { color: var(--col-waiting); }
+.kanban__col-header--preparing { color: var(--col-preparing); }
+.kanban__col-header--ready     { color: var(--col-ready); }
+.kanban__count {
+    margin-left: auto;
+    background: rgba(255,255,255,0.08);
+    border-radius: var(--radius-full);
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+.kanban__cards {
+    flex: 1;
+    overflow-y: auto;
+    padding: var(--space-3);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    scrollbar-width: thin;
+    scrollbar-color: var(--kitchen-border) transparent;
+}
+.kanban__empty {
+    text-align: center;
+    padding: var(--space-8) var(--space-4);
+    color: var(--kitchen-muted);
+    opacity: 0.4;
+}
+.kanban__empty i { font-size: 2rem; display: block; margin-bottom: var(--space-2); }
+.kanban__empty span { font-size: 0.85rem; }
+
+/* ─── Ticket de commande ─────────────────────────────────────────── */
+.ticket {
+    background: #22263a;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--kitchen-border);
+    overflow: hidden;
+    transition: transform var(--transition);
+    animation: ticketIn 0.3s ease;
+}
+@keyframes ticketIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+.ticket--warning { border-color: var(--col-waiting); }
+.ticket--urgent  { border-color: var(--col-preparing); animation: urgentPulse 1.5s ease infinite; }
+@keyframes urgentPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); }
+    50%      { box-shadow: 0 0 0 4px rgba(239,68,68,0.2); }
+}
+.ticket__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.625rem var(--space-4);
+    background: rgba(255,255,255,0.04);
+    border-bottom: 1px solid var(--kitchen-border);
+}
+.ticket__table {
+    font-size: 1rem;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    color: white;
+}
+.ticket__time {
+    font-size: 0.8rem;
+    color: var(--kitchen-muted);
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+}
+.ticket--warning .ticket__time { color: var(--col-waiting); }
+.ticket--urgent  .ticket__time { color: var(--col-preparing); }
+.ticket__items {
+    list-style: none;
+    padding: var(--space-3) var(--space-4);
+    border-bottom: 1px solid var(--kitchen-border);
+}
+.ticket__item {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-2);
+    padding: var(--space-1) 0;
+    font-size: 0.95rem;
+}
+.ticket__qty {
+    font-weight: 800;
+    color: var(--col-waiting);
+    min-width: 24px;
+}
+.ticket__name { font-weight: 600; flex: 1; }
+.ticket__note {
+    font-size: 0.75rem;
+    color: var(--col-preparing);
+    background: rgba(239,68,68,0.1);
+    padding: 0.1rem 0.4rem;
+    border-radius: var(--radius-sm);
+    font-style: italic;
+}
+.ticket__order-note {
+    padding: var(--space-2) var(--space-4);
+    font-size: 0.8rem;
+    color: var(--kitchen-muted);
+    font-style: italic;
+    border-bottom: 1px solid var(--kitchen-border);
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+.ticket__btn {
+    width: 100%;
+    padding: 0.75rem var(--space-4);
+    border: none;
+    font-size: 0.9rem;
+    font-weight: 700;
+    font-family: var(--font-sans);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    transition: opacity var(--transition);
+}
+.ticket__btn:hover  { opacity: 0.85; }
+.ticket__btn:active { opacity: 0.7; }
+.ticket__btn--accept { background: var(--col-preparing); color: white; }
+.ticket__btn--ready  { background: var(--col-ready);     color: white; }
+
+/* ─── Toast notification ─────────────────────────────────────────── */
+.kitchen-toast {
+    position: fixed;
+    top: 80px;
+    right: var(--space-5);
+    z-index: 500;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+.toast {
+    background: var(--kitchen-surface);
+    border: 1px solid var(--col-waiting);
+    border-radius: var(--radius-md);
+    padding: 0.875rem var(--space-5);
+    color: var(--kitchen-text);
+    font-size: 0.9rem;
+    font-weight: 600;
+    box-shadow: var(--shadow-lg);
+    animation: toastIn 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+@keyframes toastIn {
+    from { opacity: 0; transform: translateX(20px); }
+    to   { opacity: 1; transform: translateX(0); }
+}
+
+/* ─── Responsive tablet ──────────────────────────────────────────── */
+@media (max-width: 900px) {
+    .kanban { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 600px) {
+    .kanban { grid-template-columns: 1fr; }
+    .kitchen-main { padding: var(--space-2); }
+}
