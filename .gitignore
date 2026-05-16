@@ -18,7 +18,8 @@
 
 # Logs
 *.log
-/logs/
+/logs/*.log
+/logs/php_errors.log
 
 # OS / editeurs
 .DS_Store

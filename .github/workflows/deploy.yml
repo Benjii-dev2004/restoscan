@@ -21,7 +21,7 @@ jobs:
           sshpass -p "$SSH_PASSWORD" ssh -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "
             cd ~/www &&
             git pull origin main &&
-            mkdir -p public/img/menu qrcodes &&
-            chmod 755 public/img/menu qrcodes &&
+            mkdir -p public/img/menu qrcodes logs &&
+            chmod 755 public/img/menu qrcodes logs &&
             echo 'Deploy OK'
           "

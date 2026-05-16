@@ -14,6 +14,19 @@ class OrderController extends Controller {
 
     /** POST /order/create — créer une commande (AJAX JSON) */
     public function create(): void {
+        try {
+            $this->doCreate();
+        } catch (\Throwable $e) {
+            error_log('[RESTOSCAN] OrderController::create() uncaught: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
+            $this->json([
+                'error' => 'Erreur serveur inattendue.',
+                'debug' => $e->getMessage(),   // temporaire — retirer après debug
+            ], 500);
+        }
+    }
+
+    /** Logique interne de create() — séparée pour pouvoir wrapper le tout */
+    private function doCreate(): void {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             $this->json(['error' => 'Méthode non autorisée.'], 405);
         }
@@ -66,8 +79,9 @@ class OrderController extends Controller {
         $orderModel = new Order();
 
         // Transaction : commande + articles + statut table sont atomiques
-        $orderModel->beginTransaction();
         try {
+            $orderModel->beginTransaction();
+
             $commandeId = $orderModel->create($table['id'], $total, $notes);
 
             $orderItemModel = new OrderItem();
@@ -79,7 +93,7 @@ class OrderController extends Controller {
             $orderModel->commit();
         } catch (\Throwable $e) {
             $orderModel->rollback();
-            $this->json(['error' => 'Erreur lors de la création de la commande.'], 500);
+            throw $e; // remonter au wrapper create() pour logging
         }
 
         $this->json([
