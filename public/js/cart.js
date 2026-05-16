@@ -198,65 +198,126 @@ async function cartSubmit() {
     }
 }
 
-/* ─── Suivi de commande (polling) ────────────────────────────────── */
-let trackingInterval = null;
+/* ─── Suivi multi-commandes (polling) ────────────────────────────── */
+const activeOrders = new Map();  // commandeId (int) → { statut, total }
+let globalPollInterval = null;
+
 const ORDER_STEPS = ['en_attente', 'en_preparation', 'pret', 'servi'];
+const STEP_LABELS = {
+    en_attente:     'Reçue',
+    en_preparation: 'En prép.',
+    pret:           'Prête',
+    servi:          'Servie',
+};
+const STATUS_LABELS = {
+    en_attente:     '⏳ En attente…',
+    en_preparation: '🔥 En préparation…',
+    pret:           '✅ Votre commande est prête !',
+    servi:          '🎉 Bon appétit !',
+    annule:         '❌ Commande annulée',
+};
 
+/** Appelé après chaque commande validée */
 function showOrderTracker(commandeId, total) {
+    activeOrders.set(commandeId, { statut: 'en_attente', total });
+    renderOrderCards();
+    updateOrdersFab();
+    openTracker();
+    startGlobalPoll();
+}
+
+/** Afficher le panneau de suivi */
+function openTracker() {
     const tracker = document.getElementById('orderTracker');
-    if (!tracker) return;
-
-    document.getElementById('trackerTotal').textContent = formatPrice(total);
-    tracker.style.display = 'flex';
-
-    updateTrackerStep('en_attente');
-
-    trackingInterval = setInterval(async () => {
-        try {
-            const res    = await fetch(`${BASE_URL}/order/status/${commandeId}`);
-            const data   = await res.json();
-            updateTrackerStep(data.statut);
-
-            if (data.statut === 'servi' || data.statut === 'annule') {
-                clearInterval(trackingInterval);
-            }
-        } catch {}
-    }, 3000);
+    if (tracker) tracker.style.display = 'flex';
+    cartClose();
 }
 
-function updateTrackerStep(statut) {
-    const statusIdx = ORDER_STEPS.indexOf(statut);
-    const label     = document.getElementById('trackerStatusLabel');
-
-    ORDER_STEPS.forEach((step, i) => {
-        const el = document.getElementById('step-' + step);
-        if (!el) return;
-        el.classList.remove('active', 'done');
-        if (i < statusIdx)  el.classList.add('done');
-        if (i === statusIdx) el.classList.add('active');
-    });
-
-    const labels = {
-        en_attente:     '⏳ Commande reçue, en attente…',
-        en_preparation: '🔥 En cours de préparation…',
-        pret:           '✅ Votre commande est prête !',
-        servi:          '🎉 Bon appétit !',
-    };
-    if (label) label.textContent = labels[statut] || '';
-
-    // Notification quand le plat est prêt
-    if (statut === 'pret') {
-        if ('Notification' in window && Notification.permission === 'granted') {
-            new Notification('🍽️ Votre commande est prête !');
-        }
-    }
-}
-
-function newOrder() {
-    clearInterval(trackingInterval);
+/** Cacher le panneau et retourner au menu (badge reste visible) */
+function addAnotherOrder() {
     const tracker = document.getElementById('orderTracker');
     if (tracker) tracker.style.display = 'none';
-    renderCartFab();
+}
+
+/** Alias rétrocompat */
+function newOrder() { addAnotherOrder(); }
+
+/** Reconstruire toutes les cartes de commandes */
+function renderOrderCards() {
+    const container = document.getElementById('orderCards');
+    if (!container) return;
+
+    if (activeOrders.size === 0) {
+        container.innerHTML = '<p class="orders-empty">Aucune commande active.</p>';
+        return;
+    }
+
+    container.innerHTML = [...activeOrders.entries()].map(([id, order]) => {
+        const si     = ORDER_STEPS.indexOf(order.statut);
+        const isDone = order.statut === 'servi' || order.statut === 'annule';
+
+        const steps = ORDER_STEPS.map((step, i) => {
+            const cls = si < 0 ? '' : i < si ? ' done' : i === si ? ' active' : '';
+            return `<div class="tracker-step${cls}">
+                        <div class="tracker-step__dot"></div>
+                        <span>${STEP_LABELS[step] || step}</span>
+                    </div>`;
+        }).join('');
+
+        return `<div class="order-card${isDone ? ' order-card--done' : ''}">
+            <div class="order-card__header">
+                <span><i class="fa-solid fa-receipt"></i>&nbsp;Commande&nbsp;#${id}</span>
+                <span class="order-card__total">${formatPrice(order.total)}</span>
+            </div>
+            <div class="tracker-steps">${steps}</div>
+            <div class="tracker-status-label">${STATUS_LABELS[order.statut] || ''}</div>
+        </div>`;
+    }).join('');
+}
+
+/** Mettre à jour le badge flottant "Mes commandes" */
+function updateOrdersFab() {
+    const fab     = document.getElementById('ordersFab');
+    const countEl = document.getElementById('ordersFabCount');
+    if (!fab) return;
+    const active = [...activeOrders.values()]
+        .filter(o => o.statut !== 'servi' && o.statut !== 'annule').length;
+    fab.style.display = active > 0 ? 'flex' : 'none';
+    if (countEl) countEl.textContent = active;
+}
+
+/** Lancer le polling global (une seule instance pour toutes les commandes) */
+function startGlobalPoll() {
+    if (globalPollInterval) return;
+
+    globalPollInterval = setInterval(async () => {
+        let hasActive = false;
+
+        for (const [id, order] of activeOrders.entries()) {
+            if (order.statut === 'servi' || order.statut === 'annule') continue;
+            hasActive = true;
+            try {
+                const res  = await fetch(`${BASE_URL}/order/status/${id}`);
+                const data = await res.json();
+                if (data.statut && data.statut !== order.statut) {
+                    activeOrders.set(id, { ...order, statut: data.statut });
+                    if (data.statut === 'pret'
+                        && 'Notification' in window
+                        && Notification.permission === 'granted') {
+                        new Notification('🍽️ Commande #' + id + ' est prête !');
+                    }
+                }
+            } catch { /* ignore erreurs réseau transitoires */ }
+        }
+
+        renderOrderCards();
+        updateOrdersFab();
+
+        if (!hasActive) {
+            clearInterval(globalPollInterval);
+            globalPollInterval = null;
+        }
+    }, 5000);
 }
 
 /* ─── Navigation catégories (scroll) ────────────────────────────── */

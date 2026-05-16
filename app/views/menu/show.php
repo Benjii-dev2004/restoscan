@@ -144,42 +144,29 @@
     </div>
 </div>
 
-<!-- Page de confirmation / suivi (masquée par défaut) -->
+<!-- Page de suivi des commandes (masquée par défaut) -->
 <div class="order-tracker" id="orderTracker" style="display:none;">
     <div class="order-tracker__inner">
         <div class="order-tracker__icon">
             <i class="fa-solid fa-check-circle"></i>
         </div>
-        <h2>Commande envoyée !</h2>
-        <p>Table <?= View::e($table['numero']) ?> · <span id="trackerTotal"></span></p>
+        <h2>Table <?= View::e($table['numero']) ?> — Commandes</h2>
 
-        <div class="tracker-steps">
-            <div class="tracker-step" id="step-en_attente">
-                <div class="tracker-step__dot"></div>
-                <span>Reçue</span>
-            </div>
-            <div class="tracker-step" id="step-en_preparation">
-                <div class="tracker-step__dot"></div>
-                <span>En préparation</span>
-            </div>
-            <div class="tracker-step" id="step-pret">
-                <div class="tracker-step__dot"></div>
-                <span>Prête</span>
-            </div>
-            <div class="tracker-step" id="step-servi">
-                <div class="tracker-step__dot"></div>
-                <span>Servie</span>
-            </div>
-        </div>
+        <!-- Cartes de commandes générées dynamiquement -->
+        <div id="orderCards"></div>
 
-        <div class="tracker-status-label" id="trackerStatusLabel">En attente…</div>
-
-        <button class="btn btn--outline" onclick="newOrder()">
+        <button class="btn btn--outline" onclick="addAnotherOrder()">
             <i class="fa-solid fa-plus"></i>
             Ajouter une commande
         </button>
     </div>
 </div>
+
+<!-- Badge flottant "Mes commandes" (visible quand le tracker est caché) -->
+<button class="orders-fab" id="ordersFab" onclick="openTracker()" style="display:none;" aria-label="Mes commandes">
+    <i class="fa-solid fa-receipt"></i>
+    <span class="orders-fab__count" id="ordersFabCount">0</span>
+</button>
 
 <script>
     // Données de la table injectées pour cart.js

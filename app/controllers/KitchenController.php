@@ -11,7 +11,7 @@ require_once APP_PATH . '/models/Setting.php';
 class KitchenController extends Controller {
 
     public function index(): void {
-        $this->requireAuth('cuisine');
+        $this->requireAuth('cuisine|admin');
 
         $orderModel = new Order();
         $orders     = $orderModel->getActiveForKitchen();
@@ -31,7 +31,7 @@ class KitchenController extends Controller {
 
     /** POST /kitchen/update/{id} — changer le statut d'une commande (AJAX) */
     public function update(string $id): void {
-        $this->requireAuth('cuisine');
+        $this->requireAuth('cuisine|admin');
         // SEC-05 : valider le token CSRF envoye en header par le JS
         if (!$this->validateCsrfAjax()) {
             $this->json(['error' => 'Token CSRF invalide.'], 403);
@@ -56,7 +56,7 @@ class KitchenController extends Controller {
 
     /** GET /kitchen/poll — retourner les commandes actives en JSON (short polling) */
     public function poll(): void {
-        $this->requireAuth('cuisine');
+        $this->requireAuth('cuisine|admin');
 
         $orderModel = new Order();
         $orders     = $orderModel->getActiveForKitchen();

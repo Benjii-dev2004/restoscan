@@ -402,18 +402,20 @@
     background: var(--color-primary-light);
     z-index: 500;
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: center;
     padding: var(--space-6);
+    overflow-y: auto;
 }
 .order-tracker__inner {
     background: white;
     border-radius: var(--radius-xl);
     padding: var(--space-8) var(--space-6);
     text-align: center;
-    max-width: 380px;
+    max-width: 400px;
     width: 100%;
     box-shadow: var(--shadow-xl);
+    margin: auto;
 }
 .order-tracker__icon {
     font-size: 4rem;
@@ -426,14 +428,39 @@
     to   { transform: scale(1); opacity: 1; }
 }
 .order-tracker__inner h2 {
-    font-size: 1.5rem;
+    font-size: 1.3rem;
     font-weight: 800;
-    margin-bottom: var(--space-2);
+    margin-bottom: var(--space-5);
 }
-.order-tracker__inner p {
+
+/* ─── Carte d'une commande ───────────────────────────────────────── */
+#orderCards { width: 100%; }
+.order-card {
+    background: #f8f5f0;
+    border-radius: var(--radius-lg);
+    padding: var(--space-4);
+    margin-bottom: var(--space-4);
+    text-align: left;
+    transition: opacity 0.4s;
+}
+.order-card--done { opacity: 0.55; }
+.order-card__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-3);
+    font-size: 0.9rem;
+    font-weight: 700;
+}
+.order-card__total { color: var(--color-primary); font-weight: 800; }
+.order-card .tracker-steps    { margin-bottom: var(--space-2); }
+.order-card .tracker-status-label { margin-bottom: 0; margin-top: var(--space-2); font-size: 0.8rem; }
+.orders-empty {
     color: var(--color-muted);
-    margin-bottom: var(--space-6);
+    font-size: 0.9rem;
+    padding: var(--space-4) 0;
 }
+
 .tracker-steps {
     display: flex;
     justify-content: space-between;
@@ -477,17 +504,49 @@
     background: var(--color-primary);
     box-shadow: 0 0 0 4px rgba(232, 93, 4, 0.2);
 }
-.tracker-step.done .tracker-step__dot {
-    background: var(--color-success);
-}
+.tracker-step.done .tracker-step__dot { background: var(--color-success); }
 .tracker-step.active span { color: var(--color-primary); font-weight: 700; }
-.tracker-step.done span  { color: var(--color-success); }
+.tracker-step.done span   { color: var(--color-success); }
 .tracker-status-label {
     font-size: 0.9rem;
     font-weight: 600;
     color: var(--color-primary);
     margin-bottom: var(--space-6);
     min-height: 1.5rem;
+}
+
+/* ─── Badge flottant "Mes commandes" ─────────────────────────────── */
+.orders-fab {
+    position: fixed;
+    bottom: 5.5rem;
+    right: var(--space-4);
+    z-index: 200;
+    background: #16a34a;
+    color: white;
+    border: none;
+    border-radius: var(--radius-full);
+    padding: 0.6rem 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: 0.85rem;
+    font-weight: 700;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+    cursor: pointer;
+    transition: transform var(--transition);
+}
+.orders-fab:active { transform: scale(0.93); }
+.orders-fab__count {
+    background: white;
+    color: #16a34a;
+    border-radius: var(--radius-full);
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    font-weight: 800;
 }
 
 /* ─── État vide du menu ──────────────────────────────────────────── */
