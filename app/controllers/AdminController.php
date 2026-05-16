@@ -210,8 +210,7 @@ class AdminController extends Controller {
             $this->redirect('/admin/tables');
         }
 
-        $qrHost = $this->resolveQrHost();
-        $url    = 'http://' . $qrHost . '/restoscan/menu/' . $table['qr_token'];
+        $url = BASE_URL . '/menu/' . $table['qr_token'];
 
         // Regenerer a chaque fois pour garantir la bonne URL
         $filename = 'table_' . $table['numero'] . '_qr.png';
