@@ -74,17 +74,17 @@ class Model {
     }
 
     /** Démarrer une transaction PDO */
-    protected function beginTransaction(): void {
+    public function beginTransaction(): void {
         $this->db->beginTransaction();
     }
 
     /** Valider une transaction */
-    protected function commit(): void {
+    public function commit(): void {
         $this->db->commit();
     }
 
     /** Annuler une transaction */
-    protected function rollback(): void {
+    public function rollback(): void {
         if ($this->db->inTransaction()) {
             $this->db->rollBack();
         }
