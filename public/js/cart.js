@@ -183,7 +183,10 @@ async function cartSubmit() {
             cart.clear();
             showOrderTracker(data.commande_id, data.total);
         } else {
-            alert(data.error || 'Une erreur est survenue.');
+            // DEBUG temporaire : affiche le détail de l'erreur serveur
+            const msg = data.error || 'Une erreur est survenue.';
+            const dbg = data.debug ? '\n\n[Debug] ' + data.debug : '';
+            alert(msg + dbg);
         }
     } catch (err) {
         alert('Impossible d\'envoyer la commande. Vérifiez votre connexion.');
