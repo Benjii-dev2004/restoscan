@@ -1,6 +1,5 @@
 name: Deploy to Alwaysdata
 
-# Se declenche a chaque push sur la branche main
 on:
   push:
     branches:
@@ -12,29 +11,17 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Checkout du code (necessaire pour que le runner ait acces aux fichiers)
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      # 2. Connexion SSH + git pull sur le serveur
       - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host:     ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key:      ${{ secrets.SSH_PRIVATE_KEY }}
-          port:     22
-          script: |
-            set -e
-
-            # Aller dans le dossier www du site
-            cd ~/www
-
-            # Mettre a jour le code depuis GitHub
-            git pull origin main
-
-            # S'assurer que les droits sur les dossiers d'upload sont corrects
-            mkdir -p public/img/menu qrcodes
-            chmod 755 public/img/menu qrcodes
-
-            echo "✅ Deploiement termine avec succes"
+        env:
+          SSH_PASSWORD: ${{ secrets.SSH_PASSWORD }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+        run: |
+          sudo apt-get install -y sshpass
+          sshpass -p "$SSH_PASSWORD" ssh -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "
+            cd ~/www &&
+            git pull origin main &&
+            mkdir -p public/img/menu qrcodes &&
+            chmod 755 public/img/menu qrcodes &&
+            echo 'Deploy OK'
+          "
