@@ -323,21 +323,55 @@
     border-bottom: 1px solid var(--color-border);
 }
 .top-list__item:last-child { border-bottom: none; }
-.top-list__rank {
-    width: 24px;
-    height: 24px;
-    border-radius: var(--radius-full);
-    background: var(--color-primary);
-    color: white;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.75rem;
-    font-weight: 700;
+.top-list__medal {
+    font-size: 1.5rem;
     flex-shrink: 0;
+    line-height: 1;
 }
-.top-list__name { flex: 1; font-weight: 600; font-size: 0.9rem; }
-.top-list__count { font-size: 0.8rem; color: var(--color-muted); }
+.top-list__info {
+    flex: 1;
+    min-width: 0;
+}
+.top-list__name {
+    font-weight: 600;
+    font-size: 0.9rem;
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 0.3rem;
+}
+.top-list__bar {
+    height: 6px;
+    background: var(--color-border);
+    border-radius: var(--radius-full);
+    overflow: hidden;
+}
+.top-list__bar-fill {
+    height: 100%;
+    background: var(--color-primary);
+    border-radius: var(--radius-full);
+    transition: width 0.6s ease;
+}
+.top-list__count {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--color-primary);
+    flex-shrink: 0;
+    min-width: 2rem;
+    text-align: right;
+}
+.top-empty {
+    text-align: center;
+    padding: var(--space-6);
+    color: var(--color-muted);
+}
+.top-empty i {
+    font-size: 2rem;
+    display: block;
+    margin-bottom: var(--space-2);
+    opacity: 0.25;
+}
 
 /* ─── Tables admin (grille tables) ──────────────────────────────── */
 .tables-admin-grid {

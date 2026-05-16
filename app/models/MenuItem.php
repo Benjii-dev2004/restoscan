@@ -83,15 +83,15 @@ class MenuItem extends Model {
         );
     }
 
-    /** Plats les plus commandés (pour stats) */
-    public function getTopItems(int $limit = 5): array {
+    /** Plats les plus commandés (pour stats) — hors commandes annulées */
+    public function getTopItems(int $limit = 3): array {
         return $this->query(
-            "SELECT m.nom, COUNT(ci.id) as nb_commandes, SUM(ci.quantite) as total_qte
+            "SELECT m.nom, SUM(ci.quantite) as total_qte
              FROM commande_items ci
              JOIN menu_items m ON m.id = ci.menu_item_id
-             JOIN commandes c ON c.id = ci.commande_id
-             WHERE c.statut = 'servi'
-             GROUP BY m.id
+             JOIN commandes c  ON c.id = ci.commande_id
+             WHERE c.statut != 'annule'
+             GROUP BY m.id, m.nom
              ORDER BY total_qte DESC
              LIMIT ?",
             [$limit]

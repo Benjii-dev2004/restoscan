@@ -27,7 +27,7 @@ class AdminController extends Controller {
         $tableModel->syncStatuts();
 
         $stats     = $orderModel->getTodayStats();
-        $topItems  = $menuModel->getTopItems(5);
+        $topItems  = $menuModel->getTopItems(3);
         $tables    = $tableModel->getAllWithStatus();
 
         $this->render('admin/dashboard', [

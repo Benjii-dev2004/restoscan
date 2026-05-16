@@ -70,21 +70,34 @@
         </div>
     </div>
 
-    <!-- Plats les plus commandés -->
+    <!-- Top 3 plats les plus commandés -->
     <div class="dashboard-card">
         <div class="dashboard-card__header">
-            <h2><i class="fa-solid fa-trophy"></i> Top plats</h2>
+            <h2><i class="fa-solid fa-trophy"></i> Top 3 plats</h2>
             <a href="<?= View::url('admin/menu') ?>" class="btn btn--sm btn--outline">Menu</a>
         </div>
         <?php if (empty($topItems)): ?>
-        <p class="text-muted">Aucune commande pour l'instant.</p>
-        <?php else: ?>
+        <div class="top-empty">
+            <i class="fa-solid fa-bowl-food"></i>
+            <p>Aucune commande pour l'instant.</p>
+        </div>
+        <?php else:
+            $medals = ['🥇','🥈','🥉'];
+            $maxQte = max(array_column($topItems, 'total_qte')) ?: 1;
+        ?>
         <ol class="top-list">
-            <?php foreach ($topItems as $i => $item): ?>
+            <?php foreach ($topItems as $i => $item):
+                $pct = round((int)$item['total_qte'] / $maxQte * 100);
+            ?>
             <li class="top-list__item">
-                <span class="top-list__rank"><?= $i + 1 ?></span>
-                <span class="top-list__name"><?= View::e($item['nom']) ?></span>
-                <span class="top-list__count"><?= (int)$item['total_qte'] ?> cmd</span>
+                <span class="top-list__medal"><?= $medals[$i] ?? ($i + 1) ?></span>
+                <div class="top-list__info">
+                    <span class="top-list__name"><?= View::e($item['nom']) ?></span>
+                    <div class="top-list__bar">
+                        <div class="top-list__bar-fill" style="width:<?= $pct ?>%"></div>
+                    </div>
+                </div>
+                <span class="top-list__count"><?= (int)$item['total_qte'] ?></span>
             </li>
             <?php endforeach; ?>
         </ol>
