@@ -155,7 +155,8 @@ class SuperAdminController extends Controller {
         // Creer l admin local
         (new User())->createForRestaurant($rid, $adminNom, $adminEmail, $adminPass, 'admin');
 
-        $_SESSION['sa_flash_success'] = "Restaurant \"{$nom}\" cree (ID #{$rid}). Identifiants admin: {$adminEmail}";
+        $loginUrl = BASE_URL . '/r/' . $slug . '/auth/login';
+        $_SESSION['sa_flash_success'] = "Restaurant \"{$nom}\" cree. URL a partager au gerant : {$loginUrl} (admin: {$adminEmail})";
         $this->redirect('/superadmin/dashboard');
     }
 

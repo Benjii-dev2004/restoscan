@@ -70,7 +70,12 @@ $csrf = $_SESSION[CSRF_TOKEN_NAME] ?? '';
                 <td><?= (int) $r['id'] ?></td>
                 <td>
                     <strong><?= View::e($r['nom']) ?></strong><br>
-                    <small style="color:#94a3b8"><?= View::e($r['slug']) ?></small>
+                    <?php $loginUrl = BASE_URL . '/r/' . $r['slug'] . '/auth/login'; ?>
+                    <small style="color:#94a3b8;font-family:monospace;font-size:.7rem">
+                        <a href="<?= View::e($loginUrl) ?>" target="_blank" style="color:#f97316">
+                            <i class="fa-solid fa-arrow-up-right-from-square"></i> /r/<?= View::e($r['slug']) ?>
+                        </a>
+                    </small>
                     <?php if (!empty($r['gerant_email'])): ?>
                     <br><small style="color:#94a3b8"><i class="fa-solid fa-envelope"></i> <?= View::e($r['gerant_email']) ?></small>
                     <?php endif; ?>

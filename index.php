@@ -10,6 +10,7 @@ require_once __DIR__ . '/config/config.php';
 require_once __DIR__ . '/config/database.php';
 
 // ─── Chargement du core MVC ───────────────────────────────────────────────────
+require_once __DIR__ . '/core/Context.php';
 require_once __DIR__ . '/core/Model.php';
 require_once __DIR__ . '/core/View.php';
 require_once __DIR__ . '/core/Controller.php';

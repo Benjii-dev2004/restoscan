@@ -1,11 +1,12 @@
 <?php
 /**
  * app/controllers/AuthController.php
- * Controleur MVC - authentification des utilisateurs (multi-tenant)
+ * Authentification slug-aware (chaque restaurant a son URL de login)
  */
 
 require_once APP_PATH . '/models/User.php';
 require_once APP_PATH . '/models/Restaurant.php';
+require_once APP_PATH . '/models/Setting.php';
 
 class AuthController extends Controller {
 
@@ -13,24 +14,43 @@ class AuthController extends Controller {
     private const LOCKOUT_SECS = 900;
 
     public function loginForm(): void {
+        // Refuser l acces sans contexte restaurant
+        if (!Context::hasContext()) {
+            http_response_code(404);
+            require_once APP_PATH . '/views/errors/404.php';
+            exit;
+        }
+
         if (isset($_SESSION['user'])) {
             $this->redirect('/');
         }
         $this->generateCsrf();
+
+        // Branding : nom + logo du restaurant
+        $settings = (new Setting(Context::id()))->getAll();
+
         $this->render('auth/login', [
-            'error'    => $_SESSION['login_error'] ?? '',
-            'app_name' => APP_NAME,
+            'error'        => $_SESSION['login_error'] ?? '',
+            'app_name'     => Context::name(),
+            'logo'         => $settings['logo']               ?? '',
+            'slogan'       => $settings['slogan']             ?? '',
+            'primary'      => $settings['couleur_principale'] ?? '#e85d04',
+            'restaurant'   => Context::restaurant(),
         ]);
         unset($_SESSION['login_error']);
     }
 
     public function login(): void {
+        if (!Context::hasContext()) {
+            http_response_code(404);
+            exit;
+        }
         if (!$this->validateCsrf()) {
             $_SESSION['login_error'] = 'Requete invalide.';
             $this->redirect('/auth/login');
         }
 
-        // SEC-19 : protection brute force par IP
+        // Brute force par IP
         $ip       = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
         $lockKey  = 'bf_lock_'  . md5($ip);
         $countKey = 'bf_count_' . md5($ip);
@@ -70,11 +90,9 @@ class AuthController extends Controller {
             $this->redirect('/auth/login');
         }
 
-        // Verifier que le restaurant existe et est utilisable
-        $restoModel = new Restaurant();
-        $resto      = $restoModel->findByIdGlobal((int) $user['restaurant_id']);
-        if (!$resto) {
-            $_SESSION['login_error'] = 'Compte invalide (restaurant introuvable).';
+        // Verifier que l user appartient bien au restaurant du slug
+        if ((int) $user['restaurant_id'] !== Context::id()) {
+            $_SESSION['login_error'] = 'Cet identifiant ne correspond pas a ce restaurant.';
             $this->redirect('/auth/login');
         }
 
@@ -96,7 +114,13 @@ class AuthController extends Controller {
         if (!$this->validateCsrf()) {
             $this->redirect('/');
         }
+        $slug = Context::slug();
         session_destroy();
-        $this->redirect('/auth/login');
+        if ($slug) {
+            header('Location: ' . BASE_URL . '/r/' . $slug . '/auth/login');
+        } else {
+            header('Location: ' . BASE_URL . '/');
+        }
+        exit;
     }
 }

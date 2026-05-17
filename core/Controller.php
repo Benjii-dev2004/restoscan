@@ -1,14 +1,12 @@
 <?php
 /**
  * core/Controller.php
- * Classe de base pour tous les controleurs RESTOSCAN (multi-tenant)
+ * Classe de base pour tous les controleurs RESTOSCAN (multi-tenant slug-aware)
  */
 
 class Controller {
 
-    /** Rendre une vue avec ses donnees */
     protected function render(string $view, array $data = [], string $layout = ''): void {
-        // BUG-21 : eviter que $data['content'] n ecrase la variable $content du layout
         unset($data['content']);
         extract($data);
         $viewFile = APP_PATH . '/views/' . $view . '.php';
@@ -33,7 +31,6 @@ class Controller {
         }
     }
 
-    /** Reponse JSON pour les endpoints AJAX */
     protected function json(array $data, int $statusCode = 200): void {
         http_response_code($statusCode);
         header('Content-Type: application/json; charset=utf-8');
@@ -41,15 +38,15 @@ class Controller {
         exit;
     }
 
-    /** Redirection */
+    /** Redirection - prefixe automatiquement par /r/{slug} via View::url() */
     protected function redirect(string $path): void {
-        header('Location: ' . BASE_URL . $path);
+        header('Location: ' . View::url(ltrim($path, '/')));
         exit;
     }
 
     /**
-     * Verifier l auth + le role + l abonnement du restaurant.
-     * $role peut etre 'admin' ou 'admin|serveur' (separateur |)
+     * Auth check + role check + slug match check + subscription check.
+     * $role : 'admin' ou 'admin|cuisine|serveur' (separateur |)
      */
     protected function requireAuth(string $role = ''): void {
         if (!isset($_SESSION['user'])) {
@@ -61,10 +58,17 @@ class Controller {
                 $this->redirect('/');
             }
         }
+        // Verifier que le slug URL appartient bien au restaurant de l utilisateur
+        if (Context::hasContext()
+            && Context::id() !== (int) $_SESSION['user']['restaurant_id']) {
+            // L user tente d acceder a un autre restaurant -> deconnecter
+            session_destroy();
+            header('Location: ' . BASE_URL . '/r/' . Context::slug() . '/auth/login');
+            exit;
+        }
         $this->checkSubscription();
     }
 
-    /** ID du restaurant courant (issu de la session utilisateur) */
     protected function currentRestaurantId(): int {
         $id = (int) ($_SESSION['user']['restaurant_id'] ?? 0);
         if ($id <= 0) {
@@ -73,10 +77,6 @@ class Controller {
         return $id;
     }
 
-    /**
-     * Bloquer l acces si le restaurant est suspendu ou abonnement expire.
-     * Affiche une page dediee et stoppe l execution.
-     */
     protected function checkSubscription(): void {
         require_once APP_PATH . '/models/Restaurant.php';
         $rid = (int) ($_SESSION['user']['restaurant_id'] ?? 0);
@@ -92,7 +92,6 @@ class Controller {
                 && strtotime($resto['abonnement_fin']) < time();
 
         if ($resto['statut'] !== 'actif' || $expired) {
-            // Mettre a jour le statut si reellement expire
             if ($expired && $resto['statut'] === 'actif') {
                 (new Restaurant())->setStatut($rid, 'expire');
                 $resto['statut'] = 'expire';
@@ -105,7 +104,6 @@ class Controller {
         }
     }
 
-    /** Generer un token CSRF */
     protected function generateCsrf(): string {
         if (empty($_SESSION[CSRF_TOKEN_NAME])) {
             $_SESSION[CSRF_TOKEN_NAME] = bin2hex(random_bytes(32));
@@ -113,14 +111,12 @@ class Controller {
         return $_SESSION[CSRF_TOKEN_NAME];
     }
 
-    /** Valider le token CSRF d un formulaire POST */
     protected function validateCsrf(): bool {
         $token = $_POST[CSRF_TOKEN_NAME] ?? '';
         return isset($_SESSION[CSRF_TOKEN_NAME])
             && hash_equals($_SESSION[CSRF_TOKEN_NAME], $token);
     }
 
-    /** Valider le token CSRF envoye en header AJAX (X-Csrf-Token) */
     protected function validateCsrfAjax(): bool {
         $token = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
         return isset($_SESSION[CSRF_TOKEN_NAME])
