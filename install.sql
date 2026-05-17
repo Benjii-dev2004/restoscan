@@ -54,6 +54,15 @@ CREATE TABLE `login_attempts` (
     KEY `idx_locked_until` (`locked_until`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- ─── Rate limits (anti-DoS sur endpoints publics) ─────────────────
+CREATE TABLE `rate_limits` (
+    `rl_key`       VARCHAR(150) NOT NULL,
+    `hits`         INT          NOT NULL DEFAULT 0,
+    `window_start` DATETIME     NOT NULL,
+    PRIMARY KEY (`rl_key`),
+    KEY `idx_window` (`window_start`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 -- ─── Super admins (toi, le proprietaire de RESTOSCAN) ─────────────
 CREATE TABLE `super_admins` (
     `id`         INT          NOT NULL AUTO_INCREMENT,

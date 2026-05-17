@@ -9,6 +9,7 @@ require_once APP_PATH . '/models/Table.php';
 require_once APP_PATH . '/models/MenuItem.php';
 require_once APP_PATH . '/models/Order.php';
 require_once APP_PATH . '/models/OrderItem.php';
+require_once APP_PATH . '/models/RateLimit.php';
 
 class OrderController extends Controller {
 
@@ -28,11 +29,25 @@ class OrderController extends Controller {
             $this->json(['error' => 'Methode non autorisee.'], 405);
         }
 
+        // RATE LIMIT global par IP (DoS protection)
+        // Max 20 commandes par IP / minute (generous pour un vrai resto plein)
+        $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+        $rl = new RateLimit();
+        if (!$rl->hit('order:ip:' . $ip, 20, 60)) {
+            $this->json(['error' => 'Trop de requetes. Patientez quelques secondes.'], 429);
+        }
+
         $rawBody = file_get_contents('php://input');
         $data    = json_decode($rawBody, true);
 
         if (!$data || empty($data['qr_token']) || empty($data['items'])) {
             $this->json(['error' => 'Donnees manquantes.'], 400);
+        }
+
+        // RATE LIMIT par table (un seul QR ne peut pas spammer)
+        // Max 10 commandes par table / minute (raisonnable pour gros groupes)
+        if (!$rl->hit('order:token:' . substr($data['qr_token'], 0, 32), 10, 60)) {
+            $this->json(['error' => 'Trop de commandes sur cette table. Patientez.'], 429);
         }
 
         // Trouver la table + le restaurant via le token (recherche globale)

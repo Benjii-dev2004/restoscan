@@ -15,6 +15,7 @@ DROP TABLE IF EXISTS `categories`;
 DROP TABLE IF EXISTS `tables`;
 DROP TABLE IF EXISTS `settings`;
 DROP TABLE IF EXISTS `users`;
+DROP TABLE IF EXISTS `rate_limits`;
 DROP TABLE IF EXISTS `login_attempts`;
 DROP TABLE IF EXISTS `super_admin_logs`;
 DROP TABLE IF EXISTS `super_admins`;
@@ -66,6 +67,15 @@ CREATE TABLE `login_attempts` (
     PRIMARY KEY (`id`),
     UNIQUE KEY `uq_ip_scope` (`ip`, `scope`),
     KEY `idx_locked_until` (`locked_until`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ─── Rate limits (anti-DoS sur endpoints publics) ─────────────────
+CREATE TABLE `rate_limits` (
+    `rl_key`       VARCHAR(150) NOT NULL,
+    `hits`         INT          NOT NULL DEFAULT 0,
+    `window_start` DATETIME     NOT NULL,
+    PRIMARY KEY (`rl_key`),
+    KEY `idx_window` (`window_start`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE `super_admins` (
