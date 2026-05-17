@@ -1,8 +1,7 @@
 <?php
 /**
  * app/controllers/WaiterController.php
- * Contrôleur MVC — interface serveur en salle
- * Rôle : afficher les commandes prêtes à servir, marquer comme servies
+ * Controleur MVC - interface serveur (scope restaurant)
  */
 
 require_once APP_PATH . '/models/Order.php';
@@ -13,24 +12,22 @@ class WaiterController extends Controller {
 
     public function index(): void {
         $this->requireAuth('serveur|admin');
+        $rid = $this->currentRestaurantId();
 
-        $orderModel = new Order();
-
-        // Commandes prêtes à servir
-        $pret  = $orderModel->getByStatut('pret');
-        // Commandes en cours (info seulement)
+        $orderModel = new Order($rid);
+        $pret    = $orderModel->getByStatut('pret');
         $encours = $orderModel->getByStatut('en_preparation');
 
         foreach ($pret as &$order) {
-            $itemModel    = new OrderItem();
+            $itemModel      = new OrderItem();
             $order['items'] = $itemModel->findByCommande($order['id']);
         }
         foreach ($encours as &$order) {
-            $itemModel    = new OrderItem();
+            $itemModel      = new OrderItem();
             $order['items'] = $itemModel->findByCommande($order['id']);
         }
 
-        $settingModel = new Setting();
+        $settingModel = new Setting($rid);
         $this->render('waiter/index', [
             'pret'    => $pret,
             'encours' => $encours,
@@ -39,25 +36,20 @@ class WaiterController extends Controller {
         ], 'waiter');
     }
 
-    /** POST /waiter/serve/{id} — marquer une commande comme servie (AJAX) */
     public function serve(string $id): void {
         $this->requireAuth('serveur|admin');
-        // SEC-05 : valider le token CSRF envoye en header par le JS
         if (!$this->validateCsrfAjax()) {
             $this->json(['error' => 'Token CSRF invalide.'], 403);
         }
-
-        $orderModel = new Order();
+        $orderModel = new Order($this->currentRestaurantId());
         $success    = $orderModel->updateStatut((int) $id, 'servi');
-
         $this->json(['success' => $success]);
     }
 
-    /** GET /waiter/poll — retourner les commandes prêtes en JSON */
     public function poll(): void {
         $this->requireAuth('serveur|admin');
-
-        $orderModel = new Order();
+        $rid        = $this->currentRestaurantId();
+        $orderModel = new Order($rid);
         $pret       = $orderModel->getByStatut('pret');
 
         foreach ($pret as &$order) {

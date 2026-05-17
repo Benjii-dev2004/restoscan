@@ -1,8 +1,8 @@
 <?php
 /**
  * app/controllers/MenuController.php
- * Contrôleur MVC — interface client (menu public via QR code)
- * Rôle : afficher le menu interactif d'une table identifiée par son token QR
+ * Controleur MVC - interface client (menu public via QR code)
+ * Le qr_token identifie a la fois la table ET le restaurant.
  */
 
 require_once APP_PATH . '/models/Table.php';
@@ -13,6 +13,7 @@ require_once APP_PATH . '/models/Setting.php';
 class MenuController extends Controller {
 
     public function show(string $qrToken): void {
+        // Recherche globale par token : retourne aussi le statut du restaurant
         $tableModel = new Table();
         $table      = $tableModel->findByToken($qrToken);
 
@@ -22,13 +23,24 @@ class MenuController extends Controller {
             return;
         }
 
-        $menuModel  = new MenuItem();
+        // Bloquer si restaurant suspendu ou abonnement expire
+        $expired = $table['abonnement_fin']
+                && strtotime($table['abonnement_fin']) < time();
+        if ($table['restaurant_statut'] !== 'actif' || $expired) {
+            http_response_code(503);
+            $this->render('errors/restaurant_unavailable');
+            return;
+        }
+
+        $rid = (int) $table['restaurant_id'];
+
+        $menuModel      = new MenuItem($rid);
         $menuByCategory = $menuModel->getMenuByCategory();
 
-        $categoryModel = new Category();
+        $categoryModel = new Category($rid);
         $categories    = $categoryModel->findAll();
 
-        $settingModel = new Setting();
+        $settingModel = new Setting($rid);
         $this->render('menu/show', [
             'table'          => $table,
             'menuByCategory' => $menuByCategory,

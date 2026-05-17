@@ -1,18 +1,16 @@
 <?php
 /**
  * app/controllers/AuthController.php
- * Controleur MVC - authentification des utilisateurs
- * Role : gerer la connexion et la deconnexion (admin, cuisine, serveur)
+ * Controleur MVC - authentification des utilisateurs (multi-tenant)
  */
 
 require_once APP_PATH . '/models/User.php';
+require_once APP_PATH . '/models/Restaurant.php';
 
 class AuthController extends Controller {
 
-    // Nombre max de tentatives avant blocage (SEC-19)
-    private const MAX_ATTEMPTS  = 5;
-    // Duree du blocage en secondes (15 minutes)
-    private const LOCKOUT_SECS  = 900;
+    private const MAX_ATTEMPTS = 5;
+    private const LOCKOUT_SECS = 900;
 
     public function loginForm(): void {
         if (isset($_SESSION['user'])) {
@@ -34,9 +32,9 @@ class AuthController extends Controller {
 
         // SEC-19 : protection brute force par IP
         $ip       = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
-        $lockKey  = 'bf_lock_'    . md5($ip);
-        $countKey = 'bf_count_'   . md5($ip);
-        $timeKey  = 'bf_time_'    . md5($ip);
+        $lockKey  = 'bf_lock_'  . md5($ip);
+        $countKey = 'bf_count_' . md5($ip);
+        $timeKey  = 'bf_time_'  . md5($ip);
 
         if (!empty($_SESSION[$lockKey])) {
             $elapsed = time() - ($_SESSION[$timeKey] ?? 0);
@@ -45,7 +43,6 @@ class AuthController extends Controller {
                 $_SESSION['login_error'] = "Trop de tentatives. Reessayez dans {$remaining} minute(s).";
                 $this->redirect('/auth/login');
             }
-            // Blocage expire : reinitialiser
             unset($_SESSION[$lockKey], $_SESSION[$countKey], $_SESSION[$timeKey]);
         }
 
@@ -61,7 +58,6 @@ class AuthController extends Controller {
         $user      = $userModel->authenticate($email, $password);
 
         if (!$user) {
-            // Incrementer le compteur d'echecs
             $_SESSION[$countKey] = ($_SESSION[$countKey] ?? 0) + 1;
             $_SESSION[$timeKey]  = time();
             if ($_SESSION[$countKey] >= self::MAX_ATTEMPTS) {
@@ -74,26 +70,28 @@ class AuthController extends Controller {
             $this->redirect('/auth/login');
         }
 
-        // Reinitialiser le compteur d'echecs en cas de succes
-        unset($_SESSION[$lockKey], $_SESSION[$countKey], $_SESSION[$timeKey]);
+        // Verifier que le restaurant existe et est utilisable
+        $restoModel = new Restaurant();
+        $resto      = $restoModel->findByIdGlobal((int) $user['restaurant_id']);
+        if (!$resto) {
+            $_SESSION['login_error'] = 'Compte invalide (restaurant introuvable).';
+            $this->redirect('/auth/login');
+        }
 
-        // Regenerer l'ID de session (protection fixation)
+        unset($_SESSION[$lockKey], $_SESSION[$countKey], $_SESSION[$timeKey]);
         session_regenerate_id(true);
 
         $_SESSION['user'] = [
-            'id'    => $user['id'],
-            'nom'   => $user['nom'],
-            'email' => $user['email'],
-            'role'  => $user['role'],
+            'id'            => (int) $user['id'],
+            'restaurant_id' => (int) $user['restaurant_id'],
+            'nom'           => $user['nom'],
+            'email'         => $user['email'],
+            'role'          => $user['role'],
         ];
 
         $this->redirect('/');
     }
 
-    /**
-     * POST /auth/logout - deconnexion securisee
-     * SEC-14 : logout via POST uniquement pour eviter le CSRF logout par lien GET
-     */
     public function logout(): void {
         if (!$this->validateCsrf()) {
             $this->redirect('/');

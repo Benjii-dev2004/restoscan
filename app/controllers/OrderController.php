@@ -1,8 +1,8 @@
 <?php
 /**
  * app/controllers/OrderController.php
- * Contrôleur MVC — gestion des commandes client
- * Rôle : créer une commande depuis le panier JSON et retourner le statut
+ * Controleur MVC - creation et suivi des commandes client (multi-tenant)
+ * Le restaurant_id est deduit du qr_token de la table.
  */
 
 require_once APP_PATH . '/models/Table.php';
@@ -12,46 +12,53 @@ require_once APP_PATH . '/models/OrderItem.php';
 
 class OrderController extends Controller {
 
-    /** POST /order/create — créer une commande (AJAX JSON) */
+    /** POST /order/create */
     public function create(): void {
         try {
             $this->doCreate();
         } catch (\Throwable $e) {
-            error_log('[RESTOSCAN] OrderController::create() uncaught: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
+            error_log('[RESTOSCAN] OrderController::create() uncaught: ' . $e->getMessage()
+                . ' in ' . $e->getFile() . ':' . $e->getLine());
             $this->json(['error' => 'Erreur serveur inattendue.'], 500);
         }
     }
 
-    /** Logique interne de create() — séparée pour pouvoir wrapper le tout */
     private function doCreate(): void {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            $this->json(['error' => 'Méthode non autorisée.'], 405);
+            $this->json(['error' => 'Methode non autorisee.'], 405);
         }
 
         $rawBody = file_get_contents('php://input');
         $data    = json_decode($rawBody, true);
 
         if (!$data || empty($data['qr_token']) || empty($data['items'])) {
-            $this->json(['error' => 'Données manquantes.'], 400);
+            $this->json(['error' => 'Donnees manquantes.'], 400);
         }
 
-        // Valider la table
+        // Trouver la table + le restaurant via le token (recherche globale)
         $tableModel = new Table();
         $table      = $tableModel->findByToken($data['qr_token']);
         if (!$table) {
             $this->json(['error' => 'Table introuvable.'], 404);
         }
 
-        // Valider et recalculer le total côté serveur (anti-fraude)
-        $menuModel = new MenuItem();
+        // Bloquer si restaurant suspendu ou abonnement expire
+        $expired = $table['abonnement_fin']
+                && strtotime($table['abonnement_fin']) < time();
+        if ($table['restaurant_statut'] !== 'actif' || $expired) {
+            $this->json(['error' => 'Restaurant temporairement indisponible.'], 503);
+        }
+
+        $rid = (int) $table['restaurant_id'];
+
+        // Valider et recalculer le total cote serveur (anti-fraude)
+        $menuModel = new MenuItem($rid);
         $items     = [];
         $total     = 0.0;
 
         foreach ($data['items'] as $item) {
             $menuItem = $menuModel->findById((int) $item['id']);
-            if (!$menuItem || !$menuItem['disponible']) {
-                continue; // ignorer les plats indisponibles
-            }
+            if (!$menuItem || !$menuItem['disponible']) continue;
             $quantite = max(1, (int) $item['quantite']);
             $total   += $menuItem['prix'] * $quantite;
             $items[]  = [
@@ -66,31 +73,32 @@ class OrderController extends Controller {
             $this->json(['error' => 'Aucun article valide dans la commande.'], 400);
         }
 
-        // Limiter la quantité max par article (anti-abus)
+        // Limiter la quantite max par article (anti-abus)
         foreach ($items as &$it) {
             $it['quantite'] = min($it['quantite'], 50);
         }
         unset($it);
 
         $notes      = $this->sanitize($data['notes'] ?? '');
-        $orderModel = new Order();
+        $orderModel = new Order($rid);
 
-        // Transaction : commande + articles + statut table sont atomiques
         try {
             $orderModel->beginTransaction();
 
-            $commandeId = $orderModel->create($table['id'], $total, $notes);
+            $commandeId = $orderModel->create((int) $table['id'], $total, $notes);
 
             $orderItemModel = new OrderItem();
             if (!$orderItemModel->createBulk($commandeId, $items)) {
-                throw new \RuntimeException('Échec insertion articles.');
+                throw new \RuntimeException('Echec insertion articles.');
             }
 
-            $tableModel->updateStatut($table['id'], 'occupee');
+            // Marquer la table comme occupee (variante sans require session)
+            $tableModel->updateStatutByRid((int) $table['id'], $rid, 'occupee');
+
             $orderModel->commit();
         } catch (\Throwable $e) {
             $orderModel->rollback();
-            throw $e; // remonter au wrapper create() pour logging
+            throw $e;
         }
 
         $this->json([
@@ -100,22 +108,23 @@ class OrderController extends Controller {
         ]);
     }
 
-    /** GET /order/status/{id} — retourner le statut JSON d'une commande */
+    /** GET /order/status/{id} - retourne le statut d une commande */
     public function status(string $id): void {
         $commandeId = (int) $id;
         if ($commandeId <= 0) {
             $this->json(['error' => 'ID invalide.'], 400);
         }
 
+        // Lookup global (le client connait son id de commande, pas de leak)
         $orderModel = new Order();
-        $commande   = $orderModel->findById($commandeId);
+        $commande   = $orderModel->findByIdGlobal($commandeId);
 
         if (!$commande) {
             $this->json(['error' => 'Commande introuvable.'], 404);
         }
 
         $this->json([
-            'id'     => $commande['id'],
+            'id'     => (int) $commande['id'],
             'statut' => $commande['statut'],
             'label'  => View::statusLabel($commande['statut']),
             'total'  => $commande['total'],

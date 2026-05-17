@@ -1,41 +1,82 @@
 -- ================================================================
--- RESTOSCAN — install_production.sql
--- Pour Alwaysdata (ou tout hebergeur) : la BDD existe deja
--- Importer via phpMyAdmin de l'hebergeur
--- NE PAS executer en local (utiliser install.sql a la place)
+-- RESTOSCAN — install_production.sql (Phase 1 SaaS multi-tenant)
+-- Pour Alwaysdata : la BDD existe deja, importer via phpMyAdmin
+-- /!\ Ce script DROP les tables existantes - sauvegarder avant si besoin
 -- ================================================================
 
 SET NAMES utf8mb4;
 SET time_zone = '+00:00';
+SET FOREIGN_KEY_CHECKS = 0;
 
--- ─── Tables ───────────────────────────────────────────────────────
+DROP TABLE IF EXISTS `commande_items`;
+DROP TABLE IF EXISTS `commandes`;
+DROP TABLE IF EXISTS `menu_items`;
+DROP TABLE IF EXISTS `categories`;
+DROP TABLE IF EXISTS `tables`;
+DROP TABLE IF EXISTS `settings`;
+DROP TABLE IF EXISTS `users`;
+DROP TABLE IF EXISTS `super_admins`;
+DROP TABLE IF EXISTS `restaurants`;
 
-CREATE TABLE IF NOT EXISTS `tables` (
+SET FOREIGN_KEY_CHECKS = 1;
+
+-- ─── Restaurants ──────────────────────────────────────────────────
+CREATE TABLE `restaurants` (
+    `id`               INT          NOT NULL AUTO_INCREMENT,
+    `nom`              VARCHAR(150) NOT NULL,
+    `slug`             VARCHAR(80)  NOT NULL,
+    `abonnement_debut` DATETIME     NULL,
+    `abonnement_fin`   DATETIME     NULL,
+    `statut`           ENUM('actif','suspendu','expire') NOT NULL DEFAULT 'actif',
+    `formule`          ENUM('starter','pro','premium')   NOT NULL DEFAULT 'starter',
+    `gerant_email`     VARCHAR(150) NULL,
+    `gerant_telephone` VARCHAR(30)  NULL,
+    `created_at`       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_slug` (`slug`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `super_admins` (
     `id`         INT          NOT NULL AUTO_INCREMENT,
-    `numero`     INT          NOT NULL,
-    `qr_token`   VARCHAR(64)  NOT NULL,
-    `capacite`   INT          NOT NULL DEFAULT 4,
-    `statut`     ENUM('libre','occupee','reservee') NOT NULL DEFAULT 'libre',
+    `nom`        VARCHAR(100) NOT NULL,
+    `email`      VARCHAR(150) NOT NULL,
+    `password`   VARCHAR(255) NOT NULL,
     `created_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
-    UNIQUE KEY `uq_qr_token` (`qr_token`),
-    UNIQUE KEY `uq_numero`   (`numero`)
+    UNIQUE KEY `uq_sa_email` (`email`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- ─── Categories ───────────────────────────────────────────────────
-
-CREATE TABLE IF NOT EXISTS `categories` (
-    `id`    INT          NOT NULL AUTO_INCREMENT,
-    `nom`   VARCHAR(100) NOT NULL,
-    `ordre` INT          NOT NULL DEFAULT 0,
-    `icone` VARCHAR(50)  NOT NULL DEFAULT 'utensils',
-    PRIMARY KEY (`id`)
+CREATE TABLE `tables` (
+    `id`            INT          NOT NULL AUTO_INCREMENT,
+    `restaurant_id` INT          NOT NULL,
+    `numero`        INT          NOT NULL,
+    `qr_token`      VARCHAR(64)  NOT NULL,
+    `capacite`      INT          NOT NULL DEFAULT 4,
+    `statut`        ENUM('libre','occupee','reservee') NOT NULL DEFAULT 'libre',
+    `created_at`    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_qr_token`     (`qr_token`),
+    UNIQUE KEY `uq_resto_numero` (`restaurant_id`, `numero`),
+    KEY `idx_resto` (`restaurant_id`),
+    CONSTRAINT `fk_tables_resto`
+        FOREIGN KEY (`restaurant_id`) REFERENCES `restaurants` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- ─── Plats du menu ────────────────────────────────────────────────
+CREATE TABLE `categories` (
+    `id`            INT          NOT NULL AUTO_INCREMENT,
+    `restaurant_id` INT          NOT NULL,
+    `nom`           VARCHAR(100) NOT NULL,
+    `ordre`         INT          NOT NULL DEFAULT 0,
+    `icone`         VARCHAR(50)  NOT NULL DEFAULT 'utensils',
+    PRIMARY KEY (`id`),
+    KEY `idx_resto` (`restaurant_id`),
+    CONSTRAINT `fk_cat_resto`
+        FOREIGN KEY (`restaurant_id`) REFERENCES `restaurants` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE IF NOT EXISTS `menu_items` (
+CREATE TABLE `menu_items` (
     `id`                INT            NOT NULL AUTO_INCREMENT,
+    `restaurant_id`     INT            NOT NULL,
     `categorie_id`      INT            NOT NULL,
     `nom`               VARCHAR(150)   NOT NULL,
     `description`       TEXT,
@@ -44,33 +85,36 @@ CREATE TABLE IF NOT EXISTS `menu_items` (
     `disponible`        TINYINT(1)     NOT NULL DEFAULT 1,
     `temps_preparation` INT            NOT NULL DEFAULT 15,
     PRIMARY KEY (`id`),
+    KEY `idx_resto`         (`restaurant_id`),
     KEY `fk_menu_categorie` (`categorie_id`),
+    CONSTRAINT `fk_menu_resto`
+        FOREIGN KEY (`restaurant_id`) REFERENCES `restaurants` (`id`) ON DELETE CASCADE,
     CONSTRAINT `fk_menu_categorie`
-        FOREIGN KEY (`categorie_id`) REFERENCES `categories` (`id`) ON DELETE CASCADE
+        FOREIGN KEY (`categorie_id`)  REFERENCES `categories` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- ─── Commandes ────────────────────────────────────────────────────
-
-CREATE TABLE IF NOT EXISTS `commandes` (
-    `id`         INT            NOT NULL AUTO_INCREMENT,
-    `table_id`   INT            NOT NULL,
-    `statut`     ENUM('en_attente','en_preparation','pret','servi','annule')
-                               NOT NULL DEFAULT 'en_attente',
-    `total`      DECIMAL(8,2)   NOT NULL DEFAULT 0.00,
-    `notes`      TEXT,
-    `created_at` DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    `updated_at` DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+CREATE TABLE `commandes` (
+    `id`            INT            NOT NULL AUTO_INCREMENT,
+    `restaurant_id` INT            NOT NULL,
+    `table_id`      INT            NOT NULL,
+    `statut`        ENUM('en_attente','en_preparation','pret','servi','annule')
+                                   NOT NULL DEFAULT 'en_attente',
+    `total`         DECIMAL(8,2)   NOT NULL DEFAULT 0.00,
+    `notes`         TEXT,
+    `created_at`    DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at`    DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
+    KEY `idx_resto`      (`restaurant_id`),
     KEY `fk_cmd_table`   (`table_id`),
     KEY `idx_cmd_statut` (`statut`),
     KEY `idx_cmd_date`   (`created_at`),
+    CONSTRAINT `fk_cmd_resto`
+        FOREIGN KEY (`restaurant_id`) REFERENCES `restaurants` (`id`) ON DELETE CASCADE,
     CONSTRAINT `fk_cmd_table`
-        FOREIGN KEY (`table_id`) REFERENCES `tables` (`id`) ON DELETE CASCADE
+        FOREIGN KEY (`table_id`)      REFERENCES `tables` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- ─── Articles de commande ──────────────────────────────────────────
-
-CREATE TABLE IF NOT EXISTS `commande_items` (
+CREATE TABLE `commande_items` (
     `id`            INT          NOT NULL AUTO_INCREMENT,
     `commande_id`   INT          NOT NULL,
     `menu_item_id`  INT          NOT NULL,
@@ -86,43 +130,38 @@ CREATE TABLE IF NOT EXISTS `commande_items` (
         FOREIGN KEY (`menu_item_id`) REFERENCES `menu_items` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- ─── Utilisateurs ────────────────────────────────────────────────
-
-CREATE TABLE IF NOT EXISTS `users` (
-    `id`         INT          NOT NULL AUTO_INCREMENT,
-    `nom`        VARCHAR(100) NOT NULL,
-    `email`      VARCHAR(150) NOT NULL,
-    `password`   VARCHAR(255) NOT NULL,
-    `role`       ENUM('admin','cuisine','serveur') NOT NULL DEFAULT 'serveur',
-    `created_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+CREATE TABLE `users` (
+    `id`            INT          NOT NULL AUTO_INCREMENT,
+    `restaurant_id` INT          NOT NULL,
+    `nom`           VARCHAR(100) NOT NULL,
+    `email`         VARCHAR(150) NOT NULL,
+    `password`      VARCHAR(255) NOT NULL,
+    `role`          ENUM('admin','cuisine','serveur') NOT NULL DEFAULT 'serveur',
+    `created_at`    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
-    UNIQUE KEY `uq_email` (`email`)
+    UNIQUE KEY `uq_email` (`email`),
+    KEY `idx_resto` (`restaurant_id`),
+    CONSTRAINT `fk_user_resto`
+        FOREIGN KEY (`restaurant_id`) REFERENCES `restaurants` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- ─── Parametres ───────────────────────────────────────────────────
-
-CREATE TABLE IF NOT EXISTS `settings` (
-    `cle`    VARCHAR(100) NOT NULL,
-    `valeur` TEXT         NOT NULL,
-    PRIMARY KEY (`cle`)
+CREATE TABLE `settings` (
+    `restaurant_id` INT          NOT NULL,
+    `cle`           VARCHAR(100) NOT NULL,
+    `valeur`        TEXT         NOT NULL,
+    PRIMARY KEY (`restaurant_id`, `cle`),
+    CONSTRAINT `fk_settings_resto`
+        FOREIGN KEY (`restaurant_id`) REFERENCES `restaurants` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-INSERT INTO `settings` (`cle`, `valeur`) VALUES
-    ('nom_restaurant',    'Mon Restaurant'),
-    ('slogan',            'Bienvenue a notre table'),
-    ('couleur_principale','#e85d04'),
-    ('devise',            'FCFA'),
-    ('ip_locale',         '')
-ON DUPLICATE KEY UPDATE valeur = VALUES(valeur);
-
--- ─── Compte admin initial ─────────────────────────────────────────
--- MOT DE PASSE PAR DEFAUT : Restoscan2024!
--- CHANGER IMMEDIATEMENT apres la premiere connexion !
-INSERT IGNORE INTO `users` (`nom`, `email`, `password`, `role`) VALUES
-    ('Administrateur', 'admin@monrestaurant.com',
-     '$2y$12$y0gpc6rc0StnplxJAN7CS.EsEoETLDZCrPJ4Rjzcy3aZjjQqoorzO', 'admin');
+-- ─── Super admin initial ──────────────────────────────────────────
+-- MOT DE PASSE : Restoscan2024!  (changer immediatement)
+INSERT INTO `super_admins` (`nom`, `email`, `password`) VALUES
+    ('Super Admin', 'super@restoscan.com',
+     '$2y$12$y0gpc6rc0StnplxJAN7CS.EsEoETLDZCrPJ4Rjzcy3aZjjQqoorzO');
 
 -- ================================================================
--- Connexion : admin@monrestaurant.com / Restoscan2024!
--- CHANGER l'email et le mot de passe dans Admin > Utilisateurs
+-- /!\ APRES IMPORT : se connecter sur /superadmin/login pour
+-- creer le premier restaurant (qui creera son admin local)
+-- Connexion super-admin : super@restoscan.com / Restoscan2024!
 -- ================================================================

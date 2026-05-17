@@ -80,6 +80,17 @@ $router->get('/admin/settings',               'AdminController@settingsForm');
 $router->post('/admin/settings/save',         'AdminController@settingsSave');
 $router->get('/admin/settings/detect-ip',     'AdminController@settingsDetectIp');
 
+// Super Admin (proprietaire RESTOSCAN)
+$router->get('/superadmin/login',                    'SuperAdminController@loginForm');
+$router->post('/superadmin/login',                   'SuperAdminController@login');
+$router->post('/superadmin/logout',                  'SuperAdminController@logout');
+$router->get('/superadmin/dashboard',                'SuperAdminController@dashboard');
+$router->get('/superadmin/restaurant/new',           'SuperAdminController@restaurantNewForm');
+$router->post('/superadmin/restaurant/create',       'SuperAdminController@restaurantCreate');
+$router->post('/superadmin/restaurant/extend/{id}',  'SuperAdminController@restaurantExtend');
+$router->post('/superadmin/restaurant/toggle/{id}',  'SuperAdminController@restaurantToggle');
+$router->post('/superadmin/restaurant/delete/{id}',  'SuperAdminController@restaurantDelete');
+
 // Page d'accueil → rediriger vers login si pas auth
 $router->get('/', 'HomeController@index');
 

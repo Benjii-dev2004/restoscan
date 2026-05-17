@@ -1,8 +1,7 @@
 <?php
 /**
  * app/controllers/AdminController.php
- * Controleur MVC - back-office administration
- * Role : dashboard, CRUD menu/tables/categories/utilisateurs, QR codes
+ * Controleur MVC - back-office administration (scope restaurant)
  */
 
 require_once APP_PATH . '/models/Table.php';
@@ -18,12 +17,12 @@ class AdminController extends Controller {
 
     public function dashboard(): void {
         $this->requireAuth('admin');
+        $rid = $this->currentRestaurantId();
 
-        $orderModel  = new Order();
-        $menuModel   = new MenuItem();
-        $tableModel  = new Table();
+        $orderModel  = new Order($rid);
+        $menuModel   = new MenuItem($rid);
+        $tableModel  = new Table($rid);
 
-        // Corriger les statuts de tables desynchronises
         $tableModel->syncStatuts();
 
         $stats     = $orderModel->getTodayStats();
@@ -35,7 +34,7 @@ class AdminController extends Controller {
             'topItems' => $topItems,
             'tables'   => $tables,
             'user'     => $_SESSION['user'],
-            'app_name' => $this->getAppName(),
+            'app_name' => $this->getAppName($rid),
         ], 'admin');
     }
 
@@ -43,23 +42,24 @@ class AdminController extends Controller {
 
     public function menuList(): void {
         $this->requireAuth('admin');
-        $menuModel     = new MenuItem();
-        $categoryModel = new Category();
+        $rid = $this->currentRestaurantId();
+
+        $menuModel     = new MenuItem($rid);
+        $categoryModel = new Category($rid);
 
         $this->generateCsrf();
         $this->render('admin/menu', [
             'items'      => $menuModel->getAllForAdmin(),
             'categories' => $categoryModel->findAll(),
             'user'       => $_SESSION['user'],
-            'app_name'   => $this->getAppName(),
+            'app_name'   => $this->getAppName($rid),
         ], 'admin');
     }
 
     public function menuAdd(): void {
         $this->requireAuth('admin');
-        if (!$this->validateCsrf()) {
-            $this->redirect('/admin/menu');
-        }
+        if (!$this->validateCsrf()) $this->redirect('/admin/menu');
+        $rid = $this->currentRestaurantId();
 
         $data = [
             'categorie_id'      => (int) ($_POST['categorie_id'] ?? 0),
@@ -75,24 +75,20 @@ class AdminController extends Controller {
         }
 
         if ($data['nom'] && $data['prix'] > 0 && $data['categorie_id']) {
-            $menuModel = new MenuItem();
+            $menuModel = new MenuItem($rid);
             $menuModel->create($data);
         }
-
         $this->redirect('/admin/menu');
     }
 
     public function menuEdit(string $id): void {
         $this->requireAuth('admin');
-        if (!$this->validateCsrf()) {
-            $this->redirect('/admin/menu');
-        }
+        if (!$this->validateCsrf()) $this->redirect('/admin/menu');
+        $rid = $this->currentRestaurantId();
 
-        $menuModel = new MenuItem();
+        $menuModel = new MenuItem($rid);
         $item      = $menuModel->findById((int) $id);
-        if (!$item) {
-            $this->redirect('/admin/menu');
-        }
+        if (!$item) $this->redirect('/admin/menu');
 
         $data = [
             'categorie_id'      => (int) ($_POST['categorie_id'] ?? $item['categorie_id']),
@@ -114,22 +110,18 @@ class AdminController extends Controller {
 
     public function menuDelete(string $id): void {
         $this->requireAuth('admin');
-        if (!$this->validateCsrf()) {
-            $this->redirect('/admin/menu');
-        }
-        $menuModel = new MenuItem();
+        if (!$this->validateCsrf()) $this->redirect('/admin/menu');
+        $menuModel = new MenuItem($this->currentRestaurantId());
         $menuModel->delete((int) $id);
         $this->redirect('/admin/menu');
     }
 
-    /** POST /admin/menu/toggle/{id} - basculer disponibilite (AJAX) */
     public function menuToggle(string $id): void {
         $this->requireAuth('admin');
-        // SEC-05 : valider le token CSRF envoye en header par le JS
         if (!$this->validateCsrfAjax()) {
             $this->json(['error' => 'Token CSRF invalide.'], 403);
         }
-        $menuModel = new MenuItem();
+        $menuModel = new MenuItem($this->currentRestaurantId());
         $menuModel->toggleAvailability((int) $id);
         $this->json(['success' => true]);
     }
@@ -138,30 +130,27 @@ class AdminController extends Controller {
 
     public function tablesList(): void {
         $this->requireAuth('admin');
-        $tableModel = new Table();
+        $rid = $this->currentRestaurantId();
+        $tableModel = new Table($rid);
         $this->generateCsrf();
 
         $currentHost = $_SERVER['HTTP_HOST'] ?? 'localhost';
         $onLocalhost = in_array(strtolower($currentHost), ['localhost', '127.0.0.1', '::1'], true);
-        $lanIp       = $onLocalhost ? $this->resolveQrHost() : null;
-        // Ne pas afficher le bandeau si resolveQrHost retourne le meme host
+        $lanIp       = $onLocalhost ? $this->resolveQrHost($rid) : null;
         if ($lanIp === $currentHost) $lanIp = null;
 
         $this->render('admin/tables', [
             'tables'      => $tableModel->getAllWithStatus(),
             'user'        => $_SESSION['user'],
-            'app_name'    => $this->getAppName(),
+            'app_name'    => $this->getAppName($rid),
             'onLocalhost' => $onLocalhost,
             'lanIp'       => $lanIp,
         ], 'admin');
     }
 
-    /** POST /admin/tables/qrcache/clear - vider le cache des QR codes */
     public function tablesQrCacheClear(): void {
         $this->requireAuth('admin');
-        if (!$this->validateCsrf()) {
-            $this->redirect('/admin/tables');
-        }
+        if (!$this->validateCsrf()) $this->redirect('/admin/tables');
         foreach (glob(QRCODE_PATH . '/*.png') ?: [] as $file) {
             @unlink($file);
         }
@@ -170,28 +159,22 @@ class AdminController extends Controller {
 
     public function tablesAdd(): void {
         $this->requireAuth('admin');
-        if (!$this->validateCsrf()) {
-            $this->redirect('/admin/tables');
-        }
+        if (!$this->validateCsrf()) $this->redirect('/admin/tables');
 
         $numero   = (int) ($_POST['numero']   ?? 0);
         $capacite = (int) ($_POST['capacite'] ?? 4);
 
         if ($numero > 0) {
-            $tableModel = new Table();
+            $tableModel = new Table($this->currentRestaurantId());
             $tableModel->create($numero, $capacite);
         }
-
         $this->redirect('/admin/tables');
     }
 
     public function tablesDelete(string $id): void {
         $this->requireAuth('admin');
-        if (!$this->validateCsrf()) {
-            $this->redirect('/admin/tables');
-        }
-        $tableModel = new Table();
-        // BUG-17 : empecher la suppression si la table a des commandes actives
+        if (!$this->validateCsrf()) $this->redirect('/admin/tables');
+        $tableModel = new Table($this->currentRestaurantId());
         if ($tableModel->hasActiveOrders((int) $id)) {
             $_SESSION['flash_error'] = 'Impossible de supprimer une table avec des commandes actives.';
             $this->redirect('/admin/tables');
@@ -200,20 +183,16 @@ class AdminController extends Controller {
         $this->redirect('/admin/tables');
     }
 
-    /** GET /admin/tables/qrcode/{id} - generer et telecharger le QR code PNG */
     public function tablesQrcode(string $id): void {
         $this->requireAuth('admin');
+        $rid = $this->currentRestaurantId();
 
-        $tableModel = new Table();
+        $tableModel = new Table($rid);
         $table      = $tableModel->findById((int) $id);
-        if (!$table) {
-            $this->redirect('/admin/tables');
-        }
+        if (!$table) $this->redirect('/admin/tables');
 
         $url = BASE_URL . '/menu/' . $table['qr_token'];
-
-        // Regenerer a chaque fois pour garantir la bonne URL
-        $filename = 'table_' . $table['numero'] . '_qr.png';
+        $filename = 'table_' . $rid . '_' . $table['numero'] . '_qr.png';
         $filepath = QRCODE_PATH . '/' . $filename;
         $this->generateQrCode($url, $filepath);
 
@@ -223,45 +202,27 @@ class AdminController extends Controller {
         exit;
     }
 
-    /**
-     * Determine l'hote a encoder dans les QR codes.
-     * Ordre de priorite :
-     *   1. IP saisie manuellement dans Parametres (fiable a 100 %)
-     *   2. Socket UDP vers 8.8.8.8 - lit l'interface reseau sortante reelle
-     *      (ignore VirtualBox, VMware, Bluetooth, etc.)
-     *   3. Hote HTTP courant (fonctionne si l'admin accede deja via son IP)
-     */
-    private function resolveQrHost(): string {
-        // 1. Parametre manuel
-        $saved = (new Setting())->get('ip_locale', '');
+    private function resolveQrHost(int $rid): string {
+        $saved = (new Setting($rid))->get('ip_locale', '');
         if ($saved && filter_var($saved, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
             return $saved;
         }
 
         $currentHost = $_SERVER['HTTP_HOST'] ?? 'localhost';
-        $onLocal     = in_array(strtolower($currentHost),
-                                ['localhost', '127.0.0.1', '::1'], true);
+        $onLocal     = in_array(strtolower($currentHost), ['localhost', '127.0.0.1', '::1'], true);
+        if (!$onLocal) return $currentHost;
 
-        if (!$onLocal) {
-            return $currentHost; // deja sur une IP reelle
-        }
-
-        // 2. Socket UDP - detecte l'interface qui sert reellement le reseau
         if (function_exists('socket_create')) {
             $sock = @socket_create(AF_INET, SOCK_DGRAM, SOL_UDP);
             if ($sock !== false) {
                 @socket_connect($sock, '8.8.8.8', 80);
                 @socket_getsockname($sock, $detected);
                 @socket_close($sock);
-                if (!empty($detected)
-                    && $detected !== '0.0.0.0'
-                    && $detected !== '127.0.0.1') {
+                if (!empty($detected) && $detected !== '0.0.0.0' && $detected !== '127.0.0.1') {
                     return $detected;
                 }
             }
         }
-
-        // 3. Fallback : on reste sur localhost
         return $currentHost;
     }
 
@@ -269,9 +230,10 @@ class AdminController extends Controller {
 
     public function ordersList(): void {
         $this->requireAuth('admin');
+        $rid = $this->currentRestaurantId();
 
-        $orderModel = new Order();
-        $tableModel = new Table();
+        $orderModel = new Order($rid);
+        $tableModel = new Table($rid);
 
         $filters = [
             'statut'   => $_GET['statut']   ?? '',
@@ -284,7 +246,7 @@ class AdminController extends Controller {
             'tables'   => $tableModel->findAll('numero ASC'),
             'filters'  => $filters,
             'user'     => $_SESSION['user'],
-            'app_name' => $this->getAppName(),
+            'app_name' => $this->getAppName($rid),
         ], 'admin');
     }
 
@@ -292,20 +254,19 @@ class AdminController extends Controller {
 
     public function usersList(): void {
         $this->requireAuth('admin');
-        $userModel = new User();
+        $rid = $this->currentRestaurantId();
+        $userModel = new User($rid);
         $this->generateCsrf();
         $this->render('admin/users', [
             'users'    => $userModel->findAll(),
             'user'     => $_SESSION['user'],
-            'app_name' => $this->getAppName(),
+            'app_name' => $this->getAppName($rid),
         ], 'admin');
     }
 
     public function usersAdd(): void {
         $this->requireAuth('admin');
-        if (!$this->validateCsrf()) {
-            $this->redirect('/admin/users');
-        }
+        if (!$this->validateCsrf()) $this->redirect('/admin/users');
 
         $nom      = $this->sanitize($_POST['nom']      ?? '');
         $email    = filter_input(INPUT_POST, 'email', FILTER_SANITIZE_EMAIL) ?? '';
@@ -313,25 +274,20 @@ class AdminController extends Controller {
         $role     = $_POST['role']     ?? '';
 
         $allowed = ['admin', 'cuisine', 'serveur'];
-        // SEC-18 : longueur minimale mot de passe cote serveur
         if ($nom && $email && strlen($password) >= 8 && in_array($role, $allowed, true)) {
-            $userModel = new User();
+            $userModel = new User($this->currentRestaurantId());
             $userModel->create($nom, $email, $password, $role);
         }
-
         $this->redirect('/admin/users');
     }
 
     public function usersDelete(string $id): void {
         $this->requireAuth('admin');
-        if (!$this->validateCsrf()) {
-            $this->redirect('/admin/users');
-        }
-        // Empecher l'admin de se supprimer lui-meme
+        if (!$this->validateCsrf()) $this->redirect('/admin/users');
         if ((int) $id === (int) $_SESSION['user']['id']) {
             $this->redirect('/admin/users');
         }
-        $userModel = new User();
+        $userModel = new User($this->currentRestaurantId());
         $userModel->delete((int) $id);
         $this->redirect('/admin/users');
     }
@@ -340,40 +296,35 @@ class AdminController extends Controller {
 
     public function categoriesList(): void {
         $this->requireAuth('admin');
-        $categoryModel = new Category();
+        $rid = $this->currentRestaurantId();
+        $categoryModel = new Category($rid);
         $this->generateCsrf();
         $this->render('admin/categories', [
             'categories' => $categoryModel->getAllWithCount(),
             'user'       => $_SESSION['user'],
-            'app_name'   => $this->getAppName(),
+            'app_name'   => $this->getAppName($rid),
         ], 'admin');
     }
 
     public function categoriesAdd(): void {
         $this->requireAuth('admin');
-        if (!$this->validateCsrf()) {
-            $this->redirect('/admin/categories');
-        }
+        if (!$this->validateCsrf()) $this->redirect('/admin/categories');
 
         $nom   = $this->sanitize($_POST['nom']   ?? '');
         $ordre = (int) ($_POST['ordre']           ?? 0);
         $icone = $this->sanitize($_POST['icone']  ?? 'utensils');
 
         if ($nom) {
-            $categoryModel = new Category();
+            $categoryModel = new Category($this->currentRestaurantId());
             $categoryModel->create($nom, $ordre, $icone);
         }
-
         $this->redirect('/admin/categories');
     }
 
     public function categoriesDelete(string $id): void {
         $this->requireAuth('admin');
-        if (!$this->validateCsrf()) {
-            $this->redirect('/admin/categories');
-        }
-        $categoryModel = new Category();
-        // BUG-16 : empecher la suppression si la categorie contient des plats
+        if (!$this->validateCsrf()) $this->redirect('/admin/categories');
+        $categoryModel = new Category($this->currentRestaurantId());
         if ($categoryModel->hasItems((int) $id)) {
             $_SESSION['flash_error'] = 'Impossible de supprimer une categorie qui contient des plats.';
             $this->redirect('/admin/categories');
@@ -386,25 +337,22 @@ class AdminController extends Controller {
 
     public function settingsForm(): void {
         $this->requireAuth('admin');
+        $rid = $this->currentRestaurantId();
         $this->generateCsrf();
-        $settingModel = new Setting();
+        $settingModel = new Setting($rid);
         $this->render('admin/settings', [
             'settings' => $settingModel->getAll(),
             'success'  => $_SESSION['settings_saved'] ?? false,
             'user'     => $_SESSION['user'],
-            'app_name' => $this->getAppName(),
+            'app_name' => $this->getAppName($rid),
         ], 'admin');
         unset($_SESSION['settings_saved']);
     }
 
-    /** GET /admin/settings/detect-ip - retourner les IPs candidates (AJAX) */
     public function settingsDetectIp(): void {
         $this->requireAuth('admin');
-
         $ip = null;
 
-        // Methode 1 : socket UDP - ouvre une connexion vers 8.8.8.8 sans envoyer de trafic,
-        // lit l'interface locale utilisee -> donne l'IP de la carte reseau active (Wi-Fi/Ethernet)
         if (function_exists('socket_create')) {
             $sock = @socket_create(AF_INET, SOCK_DGRAM, SOL_UDP);
             if ($sock !== false) {
@@ -417,7 +365,6 @@ class AdminController extends Controller {
             }
         }
 
-        // Methode 2 : resolution du hostname (moins fiable avec plusieurs cartes)
         if (!$ip) {
             $resolved = gethostbyname(gethostname());
             if ($resolved && $resolved !== gethostname() && $resolved !== '127.0.0.1') {
@@ -430,16 +377,15 @@ class AdminController extends Controller {
 
     public function settingsSave(): void {
         $this->requireAuth('admin');
-        if (!$this->validateCsrf()) {
-            $this->redirect('/admin/settings');
-        }
+        if (!$this->validateCsrf()) $this->redirect('/admin/settings');
+        $rid = $this->currentRestaurantId();
 
-        $settingModel = new Setting();
-        $settingModel->set('nom_restaurant',    $this->sanitize($_POST['nom_restaurant'] ?? ''));
-        $settingModel->set('slogan',            $this->sanitize($_POST['slogan'] ?? ''));
-        $settingModel->set('couleur_principale',$this->sanitize($_POST['couleur_principale'] ?? '#e85d04'));
-        $settingModel->set('devise',            $this->sanitize($_POST['devise'] ?? 'FCFA'));
-        // IP LAN : valider le format (IPv4 uniquement)
+        $settingModel = new Setting($rid);
+        $settingModel->set('nom_restaurant',     $this->sanitize($_POST['nom_restaurant'] ?? ''));
+        $settingModel->set('slogan',             $this->sanitize($_POST['slogan'] ?? ''));
+        $settingModel->set('couleur_principale', $this->sanitize($_POST['couleur_principale'] ?? '#e85d04'));
+        $settingModel->set('devise',             $this->sanitize($_POST['devise'] ?? 'FCFA'));
+
         $ipLocale = trim($_POST['ip_locale'] ?? '');
         if (filter_var($ipLocale, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
             $settingModel->set('ip_locale', $ipLocale);
@@ -456,49 +402,34 @@ class AdminController extends Controller {
         $this->redirect('/admin/settings');
     }
 
-    // --- Helpers prives ------------------------------------------------------
+    // --- Helpers -------------------------------------------------------------
 
-    private ?string $restaurantName = null;
+    private array $restaurantNames = [];
 
-    private function getAppName(): string {
-        if ($this->restaurantName === null) {
-            $this->restaurantName = (new Setting())->get('nom_restaurant', APP_NAME);
+    private function getAppName(int $rid): string {
+        if (!isset($this->restaurantNames[$rid])) {
+            $this->restaurantNames[$rid] = (new Setting($rid))->get('nom_restaurant', APP_NAME);
         }
-        return $this->restaurantName;
+        return $this->restaurantNames[$rid];
     }
 
-    /**
-     * Traiter l'upload d'une image de plat.
-     * SEC-06 : utilise finfo_file() pour detecter le vrai MIME,
-     *          independamment de ce que le navigateur declare.
-     */
     private function handleImageUpload(array $file): string {
         $allowedMime = ['image/jpeg', 'image/png', 'image/webp'];
         $allowedExt  = ['jpg', 'jpeg', 'png', 'webp'];
-        $maxSize     = 2 * 1024 * 1024; // 2 Mo
+        $maxSize     = 2 * 1024 * 1024;
         $uploadDir   = PUBLIC_PATH . '/img/menu/';
 
-        if ($file['error'] !== UPLOAD_ERR_OK || $file['size'] > $maxSize) {
-            return '';
-        }
+        if ($file['error'] !== UPLOAD_ERR_OK || $file['size'] > $maxSize) return '';
 
-        // Verifier le vrai MIME via le contenu du fichier (pas $_FILES['type'])
         $finfo    = finfo_open(FILEINFO_MIME_TYPE);
         $realMime = finfo_file($finfo, $file['tmp_name']);
         finfo_close($finfo);
-
-        if (!in_array($realMime, $allowedMime, true)) {
-            return '';
-        }
+        if (!in_array($realMime, $allowedMime, true)) return '';
 
         $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-        if (!in_array($ext, $allowedExt, true)) {
-            return '';
-        }
+        if (!in_array($ext, $allowedExt, true)) return '';
 
-        if (!is_dir($uploadDir)) {
-            mkdir($uploadDir, 0755, true);
-        }
+        if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
 
         $filename = bin2hex(random_bytes(8)) . '.' . $ext;
         $dest     = $uploadDir . $filename;
@@ -509,13 +440,11 @@ class AdminController extends Controller {
         return '';
     }
 
-    /** Generer un QR code PNG via la bibliotheque endroid ou fallback API */
     private function generateQrCode(string $url, string $filepath): void {
-        // Tentative avec endroid/qr-code si Composer disponible
         $vendorPath = ROOT_PATH . '/vendor/autoload.php';
         if (file_exists($vendorPath)) {
             require_once $vendorPath;
-            if (class_exists('Endroid\QrCode\QrCode')) {
+            if (class_exists('Endroid\\QrCode\\QrCode')) {
                 $qrCode = new \Endroid\QrCode\QrCode($url);
                 $qrCode->setSize(400);
                 $qrCode->setMargin(20);
@@ -526,13 +455,9 @@ class AdminController extends Controller {
             }
         }
 
-        // Fallback : API publique de generation de QR code
-        // Note : en production, preferer endroid via Composer
         $apiUrl  = 'https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=' . urlencode($url);
         $context = stream_context_create(['http' => ['timeout' => 10]]);
         $img     = @file_get_contents($apiUrl, false, $context);
-        if ($img) {
-            file_put_contents($filepath, $img);
-        }
+        if ($img) file_put_contents($filepath, $img);
     }
 }
