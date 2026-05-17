@@ -42,9 +42,10 @@ export const options = {
 
     thresholds: {
         // Verifie qu il y a EFFECTIVEMENT des 429 (sinon le rate limit est cassé)
-        'orders_rate_limited': ['count>0'],
+        'orders_rate_limited': ['count>5'],
         // Verifie qu il y a EFFECTIVEMENT des succes (sinon tout est cassé)
-        'orders_success': ['count>=15'],
+        // 10 = limite par token (10/min) - c est le scenario nominal
+        'orders_success': ['count>=8'],
     },
 };
 
@@ -91,8 +92,8 @@ export function handleSummary(data) {
         `✓ Bloquees par rate limit : ${ko}`,
         `✓ Taux d acceptation      : ${total > 0 ? ((ok / total) * 100).toFixed(1) : 0}%`,
         '',
-        ok >= 15 && ko > 0
-            ? '🟢 RATE LIMIT FONCTIONNE : protection effective'
+        ok >= 8 && ko > 5
+            ? '🟢 RATE LIMIT FONCTIONNE : ~10 acceptees (limite par token), reste bloque'
             : ok === 0
                 ? '🔴 PROBLEME : aucune commande acceptee'
                 : ko === 0
