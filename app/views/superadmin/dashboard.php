@@ -4,11 +4,16 @@
  */
 $csrf = $_SESSION[CSRF_TOKEN_NAME] ?? '';
 ?>
-<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem">
     <h1 class="sa-page-title" style="margin:0"><i class="fa-solid fa-chart-pie"></i> Vue d ensemble</h1>
-    <a href="<?= View::url('superadmin/logs') ?>" class="sa-btn sa-btn--ghost">
-        <i class="fa-solid fa-clock-rotate-left"></i> Journal
-    </a>
+    <div style="display:flex;gap:.5rem">
+        <a href="<?= View::url('superadmin/health') ?>" class="sa-btn sa-btn--ghost">
+            <i class="fa-solid fa-heart-pulse"></i> Santé
+        </a>
+        <a href="<?= View::url('superadmin/logs') ?>" class="sa-btn sa-btn--ghost">
+            <i class="fa-solid fa-clock-rotate-left"></i> Journal
+        </a>
+    </div>
 </div>
 
 <?php if (!empty($_SESSION['sa_flash_success'])): ?>

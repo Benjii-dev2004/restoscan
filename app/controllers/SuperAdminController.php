@@ -271,6 +271,96 @@ class SuperAdminController extends Controller {
         ], 'superadmin');
     }
 
+    /** GET /superadmin/health - dashboard sante serveur */
+    public function health(): void {
+        $this->requireSuperAdmin();
+        require_once ROOT_PATH . '/core/ErrorHandler.php';
+
+        $health = [
+            'db_ok'          => $this->checkDb(),
+            'db_size_mb'     => $this->dbSizeMb(),
+            'errors_today'   => ErrorHandler::todayCount(),
+            'errors_recent'  => ErrorHandler::recentErrors(20),
+            'cron_last'      => $this->cronLastRun(),
+            'inactive_restos'=> $this->inactiveRestaurants(),
+            'disk_logs_kb'   => $this->dirSizeKb(ROOT_PATH . '/logs'),
+            'disk_qr_kb'     => $this->dirSizeKb(ROOT_PATH . '/qrcodes'),
+            'disk_img_kb'    => $this->dirSizeKb(ROOT_PATH . '/public/img/menu'),
+            'php_version'    => PHP_VERSION,
+        ];
+
+        $this->render('superadmin/health', [
+            'h'  => $health,
+            'sa' => $_SESSION['superadmin'],
+        ], 'superadmin');
+    }
+
+    private function checkDb(): bool {
+        try {
+            $stmt = Database::getInstance()->query("SELECT 1");
+            return $stmt && (int) $stmt->fetchColumn() === 1;
+        } catch (\Throwable $e) {
+            return false;
+        }
+    }
+
+    private function dbSizeMb(): float {
+        try {
+            $row = Database::getInstance()->query(
+                "SELECT SUM(data_length + index_length) AS sz
+                 FROM information_schema.tables
+                 WHERE table_schema = DATABASE()"
+            )->fetch();
+            return round(((int) ($row['sz'] ?? 0)) / 1024 / 1024, 2);
+        } catch (\Throwable $e) {
+            return 0;
+        }
+    }
+
+    private function cronLastRun(): ?string {
+        $log = ROOT_PATH . '/logs/cron.log';
+        if (!file_exists($log)) return null;
+        $size = filesize($log);
+        if ($size <= 0) return null;
+        // Lire les derniers 1000 octets
+        $h = @fopen($log, 'r');
+        if (!$h) return null;
+        fseek($h, max(0, $size - 1000));
+        $tail = fread($h, 1000);
+        fclose($h);
+        if (preg_match_all('/\[([0-9\- :]+)\]/', $tail, $m)) {
+            return end($m[1]);
+        }
+        return null;
+    }
+
+    private function inactiveRestaurants(): array {
+        try {
+            return Database::getInstance()->query(
+                "SELECT r.id, r.nom, r.slug,
+                        MAX(c.created_at) AS last_order
+                 FROM restaurants r
+                 LEFT JOIN commandes c ON c.restaurant_id = r.id
+                 WHERE r.statut = 'actif'
+                 GROUP BY r.id
+                 HAVING last_order IS NULL
+                     OR last_order < DATE_SUB(NOW(), INTERVAL 24 HOUR)
+                 ORDER BY last_order ASC"
+            )->fetchAll();
+        } catch (\Throwable $e) {
+            return [];
+        }
+    }
+
+    private function dirSizeKb(string $dir): int {
+        if (!is_dir($dir)) return 0;
+        $size = 0;
+        foreach (glob($dir . '/*') ?: [] as $f) {
+            if (is_file($f)) $size += filesize($f);
+        }
+        return (int) round($size / 1024);
+    }
+
     // --- Helpers -------------------------------------------------------------
 
     private function requireSuperAdmin(): void {

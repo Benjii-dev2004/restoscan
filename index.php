@@ -15,6 +15,10 @@ require_once __DIR__ . '/core/Model.php';
 require_once __DIR__ . '/core/View.php';
 require_once __DIR__ . '/core/Controller.php';
 require_once __DIR__ . '/core/Router.php';
+require_once __DIR__ . '/core/ErrorHandler.php';
+
+// Activer le gestionnaire d erreurs centralise (logs structures + page propre)
+ErrorHandler::register();
 
 // ─── Session ──────────────────────────────────────────────────────────────────
 session_name(SESSION_NAME);
@@ -96,6 +100,10 @@ $router->post('/superadmin/restaurant/delete/{id}',      'SuperAdminController@r
 $router->post('/superadmin/restaurant/impersonate/{id}', 'SuperAdminController@restaurantImpersonate');
 $router->get('/superadmin/stop-impersonation',           'SuperAdminController@stopImpersonation');
 $router->get('/superadmin/logs',                         'SuperAdminController@logs');
+$router->get('/superadmin/health',                       'SuperAdminController@health');
+
+// Healthcheck public pour monitoring externe (UptimeRobot)
+$router->get('/healthz', 'HealthController@check');
 
 // Page d'accueil → rediriger vers login si pas auth
 $router->get('/', 'HomeController@index');
