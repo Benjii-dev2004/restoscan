@@ -20,7 +20,8 @@ jobs:
           sudo apt-get install -y sshpass
           sshpass -p "$SSH_PASSWORD" ssh -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "
             cd ~/www &&
-            git pull origin main &&
+            git fetch origin main &&
+            git reset --hard origin/main &&
             mkdir -p public/img/menu qrcodes logs &&
             chmod 755 public/img/menu qrcodes logs &&
             echo 'Deploy OK'
