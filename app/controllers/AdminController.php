@@ -236,18 +236,154 @@ class AdminController extends Controller {
         $tableModel = new Table($rid);
 
         $filters = [
-            'statut'   => $_GET['statut']   ?? '',
-            'date'     => $_GET['date']     ?? '',
-            'table_id' => (int) ($_GET['table_id'] ?? 0),
+            'statut'     => $_GET['statut']     ?? '',
+            'date_start' => $_GET['date_start'] ?? '',
+            'date_end'   => $_GET['date_end']   ?? '',
+            'table_id'   => (int) ($_GET['table_id'] ?? 0),
         ];
+        $page = max(1, (int) ($_GET['page'] ?? 1));
+
+        $result = $orderModel->getHistoryPaginated($filters, $page, 50);
 
         $this->render('admin/orders', [
-            'orders'   => $orderModel->getHistory($filters),
-            'tables'   => $tableModel->findAll('numero ASC'),
-            'filters'  => $filters,
-            'user'     => $_SESSION['user'],
-            'app_name' => $this->getAppName($rid),
+            'orders'    => $result['orders'],
+            'total'     => $result['total'],
+            'page'      => $result['page'],
+            'pages'     => $result['pages'],
+            'tables'    => $tableModel->findAll('numero ASC'),
+            'filters'   => $filters,
+            'user'      => $_SESSION['user'],
+            'app_name'  => $this->getAppName($rid),
         ], 'admin');
+    }
+
+    // --- Rapports / Analytics ------------------------------------------------
+
+    public function reports(): void {
+        $this->requireAuth('admin');
+        $rid = $this->currentRestaurantId();
+
+        // Periode : presets + custom
+        $preset = $_GET['preset'] ?? 'month';
+        [$start, $end] = $this->resolveDatePreset($preset, $_GET['from'] ?? '', $_GET['to'] ?? '');
+
+        // Determiner le grouping optimal selon la duree
+        $duration = strtotime($end) - strtotime($start);
+        $grouping = match(true) {
+            $duration <= 60 * 86400        => 'day',    // < 60 jours
+            $duration <= 730 * 86400       => 'month',  // < 2 ans
+            default                        => 'year',
+        };
+
+        $orderModel = new Order($rid);
+        $stats     = $orderModel->getStatsForPeriod($start, $end);
+        $evolution = $orderModel->getRevenueByBucket($start, $end, $grouping);
+        $topDishes = $orderModel->getTopDishesForPeriod($start, $end, 10);
+        $hourly    = $orderModel->getHourlyDistribution($start, $end);
+        $byTable   = $orderModel->getStatsByTable($start, $end);
+
+        $this->render('admin/reports', [
+            'stats'     => $stats,
+            'evolution' => $evolution,
+            'topDishes' => $topDishes,
+            'hourly'    => $hourly,
+            'byTable'   => $byTable,
+            'grouping'  => $grouping,
+            'preset'    => $preset,
+            'start'     => $start,
+            'end'       => $end,
+            'user'      => $_SESSION['user'],
+            'app_name'  => $this->getAppName($rid),
+        ], 'admin');
+    }
+
+    /** GET /admin/reports/export - telechargement CSV */
+    public function reportsExport(): void {
+        $this->requireAuth('admin');
+        $rid = $this->currentRestaurantId();
+
+        $preset = $_GET['preset'] ?? 'month';
+        [$start, $end] = $this->resolveDatePreset($preset, $_GET['from'] ?? '', $_GET['to'] ?? '');
+
+        $orderModel = new Order($rid);
+        $orders = $orderModel->getOrdersForExport($start, $end);
+
+        $filename = 'rapport_' . substr($start, 0, 10) . '_au_' . substr($end, 0, 10) . '.csv';
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('Cache-Control: no-store');
+
+        $out = fopen('php://output', 'w');
+        // BOM UTF-8 pour Excel
+        fwrite($out, "\xEF\xBB\xBF");
+        // Entetes
+        fputcsv($out, ['ID', 'Date', 'Table', 'Statut', 'Total', 'Notes', 'Articles'], ';');
+        foreach ($orders as $o) {
+            fputcsv($out, [
+                $o['id'],
+                $o['created_at'],
+                $o['table_numero'],
+                $o['statut'],
+                $o['total'],
+                $o['notes'] ?? '',
+                $o['items'] ?? '',
+            ], ';');
+        }
+        fclose($out);
+        exit;
+    }
+
+    /**
+     * Resoudre un preset de periode en [start, end] datetimes MySQL.
+     * Presets : today, week, month, last_month, q3m, year, last_year, 5years, custom
+     */
+    private function resolveDatePreset(string $preset, string $from = '', string $to = ''): array {
+        $now = time();
+        switch ($preset) {
+            case 'today':
+                $start = date('Y-m-d 00:00:00');
+                $end   = date('Y-m-d 23:59:59');
+                break;
+            case 'week':
+                $start = date('Y-m-d 00:00:00', strtotime('-6 days'));
+                $end   = date('Y-m-d 23:59:59');
+                break;
+            case 'last_month':
+                $start = date('Y-m-01 00:00:00', strtotime('first day of last month'));
+                $end   = date('Y-m-t 23:59:59',  strtotime('last day of last month'));
+                break;
+            case 'q3m':
+                $start = date('Y-m-d 00:00:00', strtotime('-3 months'));
+                $end   = date('Y-m-d 23:59:59');
+                break;
+            case 'year':
+                $start = date('Y-01-01 00:00:00');
+                $end   = date('Y-12-31 23:59:59');
+                break;
+            case 'last_year':
+                $y = (int) date('Y') - 1;
+                $start = "{$y}-01-01 00:00:00";
+                $end   = "{$y}-12-31 23:59:59";
+                break;
+            case '5years':
+                $y = (int) date('Y') - 4;
+                $start = "{$y}-01-01 00:00:00";
+                $end   = date('Y-12-31 23:59:59');
+                break;
+            case 'custom':
+                $start = ($from && preg_match('/^\d{4}-\d{2}-\d{2}$/', $from))
+                    ? $from . ' 00:00:00'
+                    : date('Y-m-01 00:00:00');
+                $end   = ($to && preg_match('/^\d{4}-\d{2}-\d{2}$/', $to))
+                    ? $to . ' 23:59:59'
+                    : date('Y-m-d 23:59:59');
+                break;
+            case 'month':
+            default:
+                $start = date('Y-m-01 00:00:00');
+                $end   = date('Y-m-d 23:59:59');
+        }
+        return [$start, $end];
     }
 
     // --- Utilisateurs --------------------------------------------------------

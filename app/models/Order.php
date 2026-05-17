@@ -187,4 +187,185 @@ class Order extends Model {
     public function findByIdGlobal(int $id): array|false {
         return $this->queryOne("SELECT * FROM commandes WHERE id = ?", [$id]);
     }
+
+    // ─── Reporting / analytics ─────────────────────────────────────────────
+
+    /** Stats agregees sur une periode : CA, nb cmd, panier moyen */
+    public function getStatsForPeriod(string $start, string $end): array {
+        $rid = $this->requireRestaurant();
+        $row = $this->queryOne(
+            "SELECT
+                COALESCE(SUM(total), 0) AS ca,
+                COUNT(*)                AS nb_cmd,
+                COALESCE(AVG(total), 0) AS panier_moyen
+             FROM commandes
+             WHERE restaurant_id = ?
+               AND statut != 'annule'
+               AND created_at BETWEEN ? AND ?",
+            [$rid, $start, $end]
+        );
+        return $row ?: ['ca' => 0, 'nb_cmd' => 0, 'panier_moyen' => 0];
+    }
+
+    /**
+     * Evolution du CA par bucket de temps (day | week | month | year).
+     * Renvoie [ ['bucket' => '2026-05-01', 'ca' => 12000, 'nb' => 8], ... ]
+     */
+    public function getRevenueByBucket(string $start, string $end, string $grouping = 'day'): array {
+        $rid = $this->requireRestaurant();
+
+        $expr = match($grouping) {
+            'year'  => "DATE_FORMAT(created_at, '%Y')",
+            'month' => "DATE_FORMAT(created_at, '%Y-%m')",
+            'week'  => "DATE_FORMAT(created_at, '%x-W%v')",
+            default => "DATE(created_at)",
+        };
+
+        return $this->query(
+            "SELECT {$expr} AS bucket,
+                    COALESCE(SUM(total), 0) AS ca,
+                    COUNT(*) AS nb
+             FROM commandes
+             WHERE restaurant_id = ?
+               AND statut != 'annule'
+               AND created_at BETWEEN ? AND ?
+             GROUP BY bucket
+             ORDER BY bucket ASC",
+            [$rid, $start, $end]
+        );
+    }
+
+    /** Top N plats avec CA genere sur une periode */
+    public function getTopDishesForPeriod(string $start, string $end, int $limit = 10): array {
+        $rid = $this->requireRestaurant();
+        return $this->query(
+            "SELECT m.nom,
+                    SUM(ci.quantite)                     AS qte_totale,
+                    SUM(ci.quantite * ci.prix_unitaire)  AS ca_genere,
+                    COUNT(DISTINCT ci.commande_id)       AS nb_cmd
+             FROM commande_items ci
+             JOIN commandes  c ON c.id = ci.commande_id
+             JOIN menu_items m ON m.id = ci.menu_item_id
+             WHERE c.restaurant_id = ?
+               AND c.statut != 'annule'
+               AND c.created_at BETWEEN ? AND ?
+             GROUP BY m.id, m.nom
+             ORDER BY ca_genere DESC
+             LIMIT ?",
+            [$rid, $start, $end, $limit]
+        );
+    }
+
+    /** Heures de pointe (0-23) */
+    public function getHourlyDistribution(string $start, string $end): array {
+        $rid = $this->requireRestaurant();
+        return $this->query(
+            "SELECT HOUR(created_at) AS heure,
+                    COUNT(*)         AS nb_cmd,
+                    COALESCE(SUM(total), 0) AS ca
+             FROM commandes
+             WHERE restaurant_id = ?
+               AND statut != 'annule'
+               AND created_at BETWEEN ? AND ?
+             GROUP BY heure
+             ORDER BY heure ASC",
+            [$rid, $start, $end]
+        );
+    }
+
+    /** Performance par table (numero, nb cmd, CA) */
+    public function getStatsByTable(string $start, string $end): array {
+        $rid = $this->requireRestaurant();
+        return $this->query(
+            "SELECT t.numero,
+                    COUNT(c.id)                  AS nb_cmd,
+                    COALESCE(SUM(c.total), 0)    AS ca
+             FROM commandes c
+             JOIN tables t ON t.id = c.table_id
+             WHERE c.restaurant_id = ?
+               AND c.statut != 'annule'
+               AND c.created_at BETWEEN ? AND ?
+             GROUP BY t.id, t.numero
+             ORDER BY ca DESC",
+            [$rid, $start, $end]
+        );
+    }
+
+    /** Historique paginé pour /admin/orders */
+    public function getHistoryPaginated(array $filters, int $page = 1, int $perPage = 50): array {
+        $rid = $this->requireRestaurant();
+        $where  = ['c.restaurant_id = ?'];
+        $params = [$rid];
+
+        if (!empty($filters['statut'])) {
+            $where[]  = 'c.statut = ?';
+            $params[] = $filters['statut'];
+        }
+        if (!empty($filters['date_start'])) {
+            $where[]  = 'c.created_at >= ?';
+            $params[] = $filters['date_start'] . ' 00:00:00';
+        }
+        if (!empty($filters['date_end'])) {
+            $where[]  = 'c.created_at <= ?';
+            $params[] = $filters['date_end'] . ' 23:59:59';
+        }
+        if (!empty($filters['table_id'])) {
+            $where[]  = 'c.table_id = ?';
+            $params[] = (int) $filters['table_id'];
+        }
+
+        $whereClause = 'WHERE ' . implode(' AND ', $where);
+        $offset      = max(0, ($page - 1) * $perPage);
+
+        $orders = $this->query(
+            "SELECT c.*, t.numero AS table_numero
+             FROM commandes c
+             JOIN tables t ON t.id = c.table_id
+             {$whereClause}
+             ORDER BY c.created_at DESC
+             LIMIT {$perPage} OFFSET {$offset}",
+            $params
+        );
+
+        $total = $this->queryOne(
+            "SELECT COUNT(*) AS cnt
+             FROM commandes c
+             {$whereClause}",
+            $params
+        );
+
+        return [
+            'orders'    => $orders,
+            'total'     => (int) ($total['cnt'] ?? 0),
+            'page'      => $page,
+            'per_page'  => $perPage,
+            'pages'     => max(1, (int) ceil(((int) ($total['cnt'] ?? 0)) / $perPage)),
+        ];
+    }
+
+    /** Export complet pour CSV (peut etre lourd, attention sur 5 ans) */
+    public function getOrdersForExport(string $start, string $end, ?string $statut = null): array {
+        $rid = $this->requireRestaurant();
+        $where  = ['c.restaurant_id = ?', 'c.created_at BETWEEN ? AND ?'];
+        $params = [$rid, $start, $end];
+        if ($statut) {
+            $where[]  = 'c.statut = ?';
+            $params[] = $statut;
+        }
+        $whereClause = 'WHERE ' . implode(' AND ', $where);
+
+        return $this->query(
+            "SELECT c.id, c.created_at, c.statut, c.total, c.notes,
+                    t.numero AS table_numero,
+                    GROUP_CONCAT(CONCAT(ci.quantite, 'x ', m.nom) SEPARATOR ' | ') AS items
+             FROM commandes c
+             JOIN tables t ON t.id = c.table_id
+             LEFT JOIN commande_items ci ON ci.commande_id = c.id
+             LEFT JOIN menu_items     m  ON m.id = ci.menu_item_id
+             {$whereClause}
+             GROUP BY c.id
+             ORDER BY c.created_at DESC",
+            $params
+        );
+    }
 }

@@ -71,6 +71,8 @@ $router->post('/admin/tables/delete/{id}',    'AdminController@tablesDelete');
 $router->get('/admin/tables/qrcode/{id}',     'AdminController@tablesQrcode');
 $router->post('/admin/tables/qrcache/clear',  'AdminController@tablesQrCacheClear');
 $router->get('/admin/orders',                 'AdminController@ordersList');
+$router->get('/admin/reports',                'AdminController@reports');
+$router->get('/admin/reports/export',         'AdminController@reportsExport');
 $router->get('/admin/users',                  'AdminController@usersList');
 $router->post('/admin/users/add',             'AdminController@usersAdd');
 $router->post('/admin/users/delete/{id}',     'AdminController@usersDelete');

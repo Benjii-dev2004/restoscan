@@ -100,6 +100,12 @@
                 <span>Commandes</span>
             </a>
 
+            <a href="<?= View::url('admin/reports') ?>"
+               class="sidebar__link <?= str_contains($currentPath, '/admin/reports') ? 'sidebar__link--active' : '' ?>">
+                <i class="fa-solid fa-chart-line"></i>
+                <span>Rapports</span>
+            </a>
+
             <?php if (($_SESSION['user']['role'] ?? '') === 'admin'): ?>
             <a href="<?= View::url('admin/users') ?>"
                class="sidebar__link <?= str_contains($currentPath, '/admin/users') ? 'sidebar__link--active' : '' ?>">
