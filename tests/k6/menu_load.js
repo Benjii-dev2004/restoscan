@@ -32,6 +32,9 @@ export const options = {
         { duration: '1m', target: 0   },  // Descente
     ],
 
+    // Demander a k6 de calculer p99 et p99.9 (pas dispo par defaut)
+    summaryTrendStats: ['avg', 'min', 'med', 'max', 'p(90)', 'p(95)', 'p(99)'],
+
     thresholds: {
         // 95% des requetes finissent en moins de 1s
         http_req_duration: ['p(95)<1000'],
@@ -81,20 +84,24 @@ export function handleSummary(data) {
 
 function textSummary(data) {
     const m = data.metrics;
+    const v = m.http_req_duration ? m.http_req_duration.values : {};
+    const get = (k) => (v[k] !== undefined && v[k] !== null) ? v[k].toFixed(0) : 'n/a';
+    const p95 = v['p(95)'] ?? 0;
+
     const lines = [
         '\n📊 RESULTAT MENU LOAD',
         '────────────────────────',
-        `✓ Requetes totales        : ${m.http_reqs.values.count}`,
-        `✓ Duree moyenne           : ${m.http_req_duration.values.avg.toFixed(0)}ms`,
-        `✓ Duree mediane           : ${m.http_req_duration.values.med.toFixed(0)}ms`,
-        `✓ p95 (95% sous)          : ${m.http_req_duration.values['p(95)'].toFixed(0)}ms`,
-        `✓ p99                     : ${m.http_req_duration.values['p(99)'].toFixed(0)}ms`,
-        `✓ Max                     : ${m.http_req_duration.values.max.toFixed(0)}ms`,
-        `✓ Taux d'erreur HTTP      : ${(m.http_req_failed.values.rate * 100).toFixed(2)}%`,
+        `✓ Requetes totales        : ${m.http_reqs ? m.http_reqs.values.count : 0}`,
+        `✓ Duree moyenne           : ${get('avg')}ms`,
+        `✓ Duree mediane           : ${get('med')}ms`,
+        `✓ p95 (95% sous)          : ${get('p(95)')}ms`,
+        `✓ p99                     : ${get('p(99)')}ms`,
+        `✓ Max                     : ${get('max')}ms`,
+        `✓ Taux d'erreur HTTP      : ${m.http_req_failed ? (m.http_req_failed.values.rate * 100).toFixed(2) : 0}%`,
         '',
-        m.http_req_duration.values['p(95)'] < 1000
+        p95 < 1000
             ? '🟢 OBJECTIF p95<1s : ATTEINT'
-            : '🔴 OBJECTIF p95<1s : DEPASSE',
+            : '🔴 OBJECTIF p95<1s : DEPASSE (probable bottleneck hebergeur)',
         '',
     ];
     return lines.join('\n');
