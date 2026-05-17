@@ -114,6 +114,12 @@ class AuthController extends Controller {
         if (!$this->validateCsrf()) {
             $this->redirect('/');
         }
+        // Si on est en mode impersonation : retour au super-admin sans tuer la session SA
+        if (!empty($_SESSION['impersonating']) && !empty($_SESSION['superadmin'])) {
+            unset($_SESSION['user'], $_SESSION['impersonating']);
+            header('Location: ' . BASE_URL . '/superadmin/dashboard');
+            exit;
+        }
         $slug = Context::slug();
         session_destroy();
         if ($slug) {

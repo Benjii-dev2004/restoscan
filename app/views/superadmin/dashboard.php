@@ -4,7 +4,12 @@
  */
 $csrf = $_SESSION[CSRF_TOKEN_NAME] ?? '';
 ?>
-<h1 class="sa-page-title"><i class="fa-solid fa-chart-pie"></i> Vue d ensemble</h1>
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+    <h1 class="sa-page-title" style="margin:0"><i class="fa-solid fa-chart-pie"></i> Vue d ensemble</h1>
+    <a href="<?= View::url('superadmin/logs') ?>" class="sa-btn sa-btn--ghost">
+        <i class="fa-solid fa-clock-rotate-left"></i> Journal
+    </a>
+</div>
 
 <?php if (!empty($_SESSION['sa_flash_success'])): ?>
 <div class="sa-flash sa-flash--success"><i class="fa-solid fa-check"></i> <?= View::e($_SESSION['sa_flash_success']) ?></div>
@@ -99,6 +104,12 @@ $csrf = $_SESSION[CSRF_TOKEN_NAME] ?? '';
                 </td>
                 <td>
                     <div class="sa-actions-inline">
+                        <form method="POST" action="<?= View::url('superadmin/restaurant/impersonate/' . $r['id']) ?>" class="sa-inline-form" onsubmit="return confirm('Se connecter en tant que admin de ce restaurant ?')">
+                            <input type="hidden" name="<?= CSRF_TOKEN_NAME ?>" value="<?= View::e($csrf) ?>">
+                            <button type="submit" class="sa-btn sa-btn--sm" title="Mode SAV : se connecter comme l admin">
+                                <i class="fa-solid fa-user-secret"></i>
+                            </button>
+                        </form>
                         <form method="POST" action="<?= View::url('superadmin/restaurant/extend/' . $r['id']) ?>" class="sa-inline-form" onsubmit="return confirm('Prolonger de combien de mois ?')">
                             <input type="hidden" name="<?= CSRF_TOKEN_NAME ?>" value="<?= View::e($csrf) ?>">
                             <input type="number" name="months" value="1" min="1" max="60" style="width:60px;padding:.3rem">

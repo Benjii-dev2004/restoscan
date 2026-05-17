@@ -90,7 +90,10 @@ $router->get('/superadmin/restaurant/new',           'SuperAdminController@resta
 $router->post('/superadmin/restaurant/create',       'SuperAdminController@restaurantCreate');
 $router->post('/superadmin/restaurant/extend/{id}',  'SuperAdminController@restaurantExtend');
 $router->post('/superadmin/restaurant/toggle/{id}',  'SuperAdminController@restaurantToggle');
-$router->post('/superadmin/restaurant/delete/{id}',  'SuperAdminController@restaurantDelete');
+$router->post('/superadmin/restaurant/delete/{id}',      'SuperAdminController@restaurantDelete');
+$router->post('/superadmin/restaurant/impersonate/{id}', 'SuperAdminController@restaurantImpersonate');
+$router->get('/superadmin/stop-impersonation',           'SuperAdminController@stopImpersonation');
+$router->get('/superadmin/logs',                         'SuperAdminController@logs');
 
 // Page d'accueil → rediriger vers login si pas auth
 $router->get('/', 'HomeController@index');

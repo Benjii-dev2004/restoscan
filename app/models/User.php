@@ -45,6 +45,18 @@ class User extends Model {
         return (int) $this->lastInsertId();
     }
 
+    /** Premier admin du restaurant (utilise pour l impersonation super-admin) */
+    public function findFirstAdmin(): array|false {
+        $rid = $this->requireRestaurant();
+        return $this->queryOne(
+            "SELECT id, restaurant_id, nom, email, role, created_at
+             FROM users
+             WHERE restaurant_id = ? AND role = 'admin'
+             ORDER BY id ASC LIMIT 1",
+            [$rid]
+        );
+    }
+
     /** Tous les users du restaurant courant (sans password) */
     public function findAll(string $orderBy = 'nom ASC'): array {
         $rid = $this->requireRestaurant();

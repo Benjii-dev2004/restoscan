@@ -67,17 +67,21 @@ class Restaurant extends Model {
         );
     }
 
-    /** Prolonger l abonnement de N mois (relance le statut a actif) */
+    /** Prolonger l abonnement de N mois (relance le statut + reset email tracking) */
     public function extendSubscription(int $id, int $months): bool {
-        return $this->execute(
+        $ok = $this->execute(
             "UPDATE restaurants
              SET abonnement_fin = DATE_ADD(
                     GREATEST(IFNULL(abonnement_fin, NOW()), NOW()),
                     INTERVAL ? MONTH),
-                 statut = 'actif'
+                 statut = 'actif',
+                 email_30j_sent = NULL,
+                 email_7j_sent = NULL,
+                 email_expire_sent = NULL
              WHERE id = ?",
             [$months, $id]
         );
+        return $ok;
     }
 
     /** Mise a jour generale */
@@ -121,6 +125,26 @@ class Restaurant extends Model {
              FROM restaurants"
         );
         return $row ?: [];
+    }
+
+    /** Marquer un email d expiration comme envoye */
+    public function markEmailSent(int $id, string $column): bool {
+        $allowed = ['email_30j_sent', 'email_7j_sent', 'email_expire_sent'];
+        if (!in_array($column, $allowed, true)) return false;
+        return $this->execute(
+            "UPDATE restaurants SET {$column} = NOW() WHERE id = ?",
+            [$id]
+        );
+    }
+
+    /** Reinitialiser le tracking emails (apres prolongation d abonnement) */
+    public function resetEmailTracking(int $id): bool {
+        return $this->execute(
+            "UPDATE restaurants
+             SET email_30j_sent = NULL, email_7j_sent = NULL, email_expire_sent = NULL
+             WHERE id = ?",
+            [$id]
+        );
     }
 
     /** Generer un slug unique a partir d un nom */

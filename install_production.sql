@@ -15,6 +15,7 @@ DROP TABLE IF EXISTS `categories`;
 DROP TABLE IF EXISTS `tables`;
 DROP TABLE IF EXISTS `settings`;
 DROP TABLE IF EXISTS `users`;
+DROP TABLE IF EXISTS `super_admin_logs`;
 DROP TABLE IF EXISTS `super_admins`;
 DROP TABLE IF EXISTS `restaurants`;
 
@@ -22,18 +23,35 @@ SET FOREIGN_KEY_CHECKS = 1;
 
 -- ─── Restaurants ──────────────────────────────────────────────────
 CREATE TABLE `restaurants` (
-    `id`               INT          NOT NULL AUTO_INCREMENT,
-    `nom`              VARCHAR(150) NOT NULL,
-    `slug`             VARCHAR(80)  NOT NULL,
-    `abonnement_debut` DATETIME     NULL,
-    `abonnement_fin`   DATETIME     NULL,
-    `statut`           ENUM('actif','suspendu','expire') NOT NULL DEFAULT 'actif',
-    `formule`          ENUM('starter','pro','premium')   NOT NULL DEFAULT 'starter',
-    `gerant_email`     VARCHAR(150) NULL,
-    `gerant_telephone` VARCHAR(30)  NULL,
-    `created_at`       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `id`                INT          NOT NULL AUTO_INCREMENT,
+    `nom`               VARCHAR(150) NOT NULL,
+    `slug`              VARCHAR(80)  NOT NULL,
+    `abonnement_debut`  DATETIME     NULL,
+    `abonnement_fin`    DATETIME     NULL,
+    `statut`            ENUM('actif','suspendu','expire') NOT NULL DEFAULT 'actif',
+    `formule`           ENUM('starter','pro','premium')   NOT NULL DEFAULT 'starter',
+    `gerant_email`      VARCHAR(150) NULL,
+    `gerant_telephone`  VARCHAR(30)  NULL,
+    `email_30j_sent`    DATETIME     NULL,
+    `email_7j_sent`     DATETIME     NULL,
+    `email_expire_sent` DATETIME     NULL,
+    `created_at`        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
     UNIQUE KEY `uq_slug` (`slug`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `super_admin_logs` (
+    `id`                   INT          NOT NULL AUTO_INCREMENT,
+    `super_admin_id`       INT          NOT NULL,
+    `action`               VARCHAR(50)  NOT NULL,
+    `target_restaurant_id` INT          NULL,
+    `details`              TEXT         NULL,
+    `ip`                   VARCHAR(45)  NULL,
+    `created_at`           DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `idx_sa`     (`super_admin_id`),
+    KEY `idx_target` (`target_restaurant_id`),
+    KEY `idx_date`   (`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE `super_admins` (

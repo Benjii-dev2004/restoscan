@@ -17,6 +17,12 @@
     <link rel="stylesheet" href="<?= View::asset('css/kitchen.css') ?>">
 </head>
 <body class="kitchen-layout">
+    <?php if (!empty($_SESSION['impersonating'])): ?>
+    <div style="background:linear-gradient(90deg,#1e293b,#334155);color:#fbbf24;padding:.7rem 1rem;font-size:.85rem;font-weight:600;display:flex;align-items:center;gap:.8rem;border-bottom:2px solid #f59e0b">
+        <i class="fa-solid fa-user-secret"></i> Mode SAV — <?= View::e(Context::name()) ?>
+        <a href="<?= BASE_URL ?>/superadmin/stop-impersonation" style="margin-left:auto;background:#f59e0b;color:#1f2937;padding:.3rem .8rem;border-radius:6px;text-decoration:none;font-weight:700">Revenir</a>
+    </div>
+    <?php endif; ?>
     <header class="kitchen-header">
         <div class="kitchen-header__logo">
             <?php if ($brandLogo): ?>

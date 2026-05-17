@@ -16,6 +16,40 @@
 </head>
 <body class="admin-layout">
 
+    <?php if (!empty($_SESSION['impersonating'])): ?>
+    <div class="impersonation-banner">
+        <i class="fa-solid fa-user-secret"></i>
+        Mode SAV — Vous etes connecte en tant que <strong><?= View::e($_SESSION['user']['nom'] ?? '') ?></strong> (<?= View::e(Context::name()) ?>)
+        <a href="<?= BASE_URL ?>/superadmin/stop-impersonation">
+            <i class="fa-solid fa-arrow-right-from-bracket"></i> Revenir au super-admin
+        </a>
+    </div>
+    <style>
+        .impersonation-banner {
+            position: sticky; top: 0; z-index: 1000;
+            background: linear-gradient(90deg, #1e293b, #334155);
+            color: #fbbf24;
+            padding: .7rem 1rem;
+            font-size: .85rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: .8rem;
+            border-bottom: 2px solid #f59e0b;
+        }
+        .impersonation-banner a {
+            margin-left: auto;
+            background: #f59e0b;
+            color: #1f2937;
+            padding: .3rem .8rem;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 700;
+        }
+        .impersonation-banner a:hover { background: #fbbf24; }
+    </style>
+    <?php endif; ?>
+
     <!-- Sidebar -->
     <aside class="sidebar" id="sidebar">
         <?php

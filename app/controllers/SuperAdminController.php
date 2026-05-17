@@ -8,6 +8,7 @@ require_once APP_PATH . '/models/SuperAdmin.php';
 require_once APP_PATH . '/models/Restaurant.php';
 require_once APP_PATH . '/models/User.php';
 require_once APP_PATH . '/models/Setting.php';
+require_once APP_PATH . '/models/SuperAdminLog.php';
 
 class SuperAdminController extends Controller {
 
@@ -156,6 +157,12 @@ class SuperAdminController extends Controller {
         (new User())->createForRestaurant($rid, $adminNom, $adminEmail, $adminPass, 'admin');
 
         $loginUrl = BASE_URL . '/r/' . $slug . '/auth/login';
+        (new SuperAdminLog())->log(
+            (int) $_SESSION['superadmin']['id'],
+            'create',
+            $rid,
+            "Cree restaurant \"{$nom}\" (admin: {$adminEmail}, formule: {$formule}, duree: {$duree} mois)"
+        );
         $_SESSION['sa_flash_success'] = "Restaurant \"{$nom}\" cree. URL a partager au gerant : {$loginUrl} (admin: {$adminEmail})";
         $this->redirect('/superadmin/dashboard');
     }
@@ -166,6 +173,12 @@ class SuperAdminController extends Controller {
 
         $months = max(1, min(60, (int) ($_POST['months'] ?? 1)));
         (new Restaurant())->extendSubscription((int) $id, $months);
+        (new SuperAdminLog())->log(
+            (int) $_SESSION['superadmin']['id'],
+            'extend',
+            (int) $id,
+            "Prolongation de {$months} mois"
+        );
         $_SESSION['sa_flash_success'] = "Abonnement prolonge de {$months} mois.";
         $this->redirect('/superadmin/dashboard');
     }
@@ -179,6 +192,12 @@ class SuperAdminController extends Controller {
         if ($r) {
             $newStatut = $r['statut'] === 'actif' ? 'suspendu' : 'actif';
             $restoModel->setStatut((int) $id, $newStatut);
+            (new SuperAdminLog())->log(
+                (int) $_SESSION['superadmin']['id'],
+                $newStatut === 'suspendu' ? 'suspend' : 'activate',
+                (int) $id,
+                "Statut change vers \"{$newStatut}\""
+            );
             $_SESSION['sa_flash_success'] = "Statut bascule vers \"{$newStatut}\".";
         }
         $this->redirect('/superadmin/dashboard');
@@ -187,9 +206,77 @@ class SuperAdminController extends Controller {
     public function restaurantDelete(string $id): void {
         $this->requireSuperAdmin();
         if (!$this->validateCsrf()) $this->redirect('/superadmin/dashboard');
+        $r = (new Restaurant())->findByIdGlobal((int) $id);
+        $nom = $r['nom'] ?? '(inconnu)';
         (new Restaurant())->deleteById((int) $id);
+        (new SuperAdminLog())->log(
+            (int) $_SESSION['superadmin']['id'],
+            'delete',
+            (int) $id,
+            "Suppression definitive de \"{$nom}\""
+        );
         $_SESSION['sa_flash_success'] = 'Restaurant supprime.';
         $this->redirect('/superadmin/dashboard');
+    }
+
+    /** POST /superadmin/restaurant/impersonate/{id} */
+    public function restaurantImpersonate(string $id): void {
+        $this->requireSuperAdmin();
+        if (!$this->validateCsrf()) $this->redirect('/superadmin/dashboard');
+
+        $rid   = (int) $id;
+        $resto = (new Restaurant())->findByIdGlobal($rid);
+        if (!$resto) {
+            $_SESSION['sa_flash_error'] = 'Restaurant introuvable.';
+            $this->redirect('/superadmin/dashboard');
+        }
+
+        // Trouver le premier admin du restaurant
+        $admin = (new User($rid))->findFirstAdmin();
+        if (!$admin) {
+            $_SESSION['sa_flash_error'] = 'Pas d admin dans ce restaurant.';
+            $this->redirect('/superadmin/dashboard');
+        }
+
+        // Mode impersonation : on garde la session SA et on ouvre une session user
+        $_SESSION['impersonating'] = true;
+        $_SESSION['user'] = [
+            'id'            => (int) $admin['id'],
+            'restaurant_id' => $rid,
+            'nom'           => $admin['nom'],
+            'email'         => $admin['email'],
+            'role'          => 'admin',
+        ];
+
+        (new SuperAdminLog())->log(
+            (int) $_SESSION['superadmin']['id'],
+            'impersonate',
+            $rid,
+            "Connexion en tant que admin \"{$admin['email']}\""
+        );
+
+        header('Location: ' . BASE_URL . '/r/' . $resto['slug'] . '/admin/dashboard');
+        exit;
+    }
+
+    /** GET /superadmin/stop-impersonation - revenir au super-admin */
+    public function stopImpersonation(): void {
+        if (empty($_SESSION['impersonating']) || empty($_SESSION['superadmin'])) {
+            $this->redirect('/superadmin/login');
+        }
+        unset($_SESSION['user'], $_SESSION['impersonating']);
+        header('Location: ' . BASE_URL . '/superadmin/dashboard');
+        exit;
+    }
+
+    /** GET /superadmin/logs */
+    public function logs(): void {
+        $this->requireSuperAdmin();
+        $logModel = new SuperAdminLog();
+        $this->render('superadmin/logs', [
+            'logs' => $logModel->getRecent(200),
+            'sa'   => $_SESSION['superadmin'],
+        ], 'superadmin');
     }
 
     // --- Helpers -------------------------------------------------------------
