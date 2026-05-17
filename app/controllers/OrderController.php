@@ -18,10 +18,7 @@ class OrderController extends Controller {
             $this->doCreate();
         } catch (\Throwable $e) {
             error_log('[RESTOSCAN] OrderController::create() uncaught: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
-            $this->json([
-                'error' => 'Erreur serveur inattendue.',
-                'debug' => $e->getMessage(),   // temporaire — retirer après debug
-            ], 500);
+            $this->json(['error' => 'Erreur serveur inattendue.'], 500);
         }
     }
 
