@@ -275,4 +275,10 @@
 @media (max-width: 600px) {
     .kanban { grid-template-columns: 1fr; }
     .kitchen-main { padding: var(--space-2); }
+    .kitchen-header { padding: 0 var(--space-3); height: 52px; }
+    .kitchen-header__logo { font-size: .9rem; }
+    .kitchen-header__logo span { max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .kitchen-clock { display: none; }
+    .kitchen-user { font-size: .8rem; }
+    .kitchen-header__meta { gap: var(--space-2); }
 }

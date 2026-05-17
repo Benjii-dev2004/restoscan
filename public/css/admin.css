@@ -479,21 +479,69 @@
     font-size: 1rem;
 }
 
+/* ─── Tableaux scrollables (mobile-friendly) ─────────────────────── */
+.admin-card { overflow-x: auto; }
+.data-table { min-width: 600px; width: 100%; }
+
 /* ─── Responsive ─────────────────────────────────────────────────── */
 @media (max-width: 1024px) {
     .stats-grid { grid-template-columns: repeat(2, 1fr); }
     .dashboard-cols { grid-template-columns: 1fr; }
+    .admin-main { padding: var(--space-5) var(--space-5); }
 }
+
 @media (max-width: 768px) {
+    /* Sidebar en drawer */
     .sidebar { transform: translateX(-100%); }
     .sidebar.open { transform: translateX(0); }
     .admin-content { margin-left: 0; }
     .admin-topbar { display: flex; }
     .admin-main { padding: var(--space-4); }
-    .stats-grid { grid-template-columns: 1fr 1fr; }
+
+    /* Stats sur 2 colonnes */
+    .stats-grid { grid-template-columns: 1fr 1fr; gap: var(--space-3); }
+    .stat-card { padding: var(--space-3); }
+    .stat-card__value { font-size: 1.4rem; }
+    .stat-card__label { font-size: .75rem; }
+
+    /* Forms en colonne */
     .form-grid { grid-template-columns: 1fr; }
     .form-group--full { grid-column: 1; }
+
+    /* Page header se met en colonne */
+    .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--space-3);
+    }
+    .page-title { font-size: 1.2rem; }
+
+    /* Filtres en colonne */
+    .filters-form {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .filters-form .form-group { width: 100%; }
 }
+
 @media (max-width: 480px) {
     .stats-grid { grid-template-columns: 1fr; }
+    .admin-main { padding: var(--space-3); }
+    .page-title { font-size: 1.05rem; }
+    .stat-card__value { font-size: 1.6rem; }
+
+    /* Boutons full width pour gros doigts */
+    .btn { width: 100%; justify-content: center; }
+    .btn--sm { width: auto; }
+    .filters-form .btn { width: 100%; }
+
+    /* Padding des cards reduit */
+    .dashboard-card__header { padding: var(--space-3) var(--space-4); }
+    .dashboard-card__header h2 { font-size: .9rem; }
+}
+
+/* Quand la banniere SAV est presente, decaler la sidebar aussi */
+body.has-imp-banner .sidebar { top: 52px; }
+@media (max-width: 640px) {
+    body.has-imp-banner .sidebar { top: 46px; }
 }

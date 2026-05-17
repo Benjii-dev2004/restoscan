@@ -18,40 +18,25 @@
     <link rel="stylesheet" href="<?= View::asset('css/main.css') ?>">
     <link rel="stylesheet" href="<?= View::asset('css/admin.css') ?>">
 </head>
-<body class="admin-layout">
+<body class="admin-layout<?= !empty($_SESSION['impersonating']) ? ' has-imp-banner' : '' ?>">
 
     <?php if (!empty($_SESSION['impersonating'])): ?>
-    <div class="impersonation-banner">
-        <i class="fa-solid fa-user-secret"></i>
-        Mode SAV — Vous etes connecte en tant que <strong><?= View::e($_SESSION['user']['nom'] ?? '') ?></strong> (<?= View::e(Context::name()) ?>)
-        <a href="<?= BASE_URL ?>/superadmin/stop-impersonation">
-            <i class="fa-solid fa-arrow-right-from-bracket"></i> Revenir au super-admin
-        </a>
+    <div class="imp-banner" role="alert">
+        <div class="imp-banner__inner">
+            <div class="imp-banner__msg">
+                <i class="fa-solid fa-user-secret"></i>
+                <span class="imp-banner__msg-text">
+                    Mode SAV — connecté en tant que
+                    <strong class="imp-banner__msg-name"><?= View::e($_SESSION['user']['nom'] ?? '') ?></strong>
+                    <span class="imp-banner__msg-resto">(<?= View::e(Context::name()) ?>)</span>
+                </span>
+            </div>
+            <a href="<?= BASE_URL ?>/superadmin/stop-impersonation" class="imp-banner__btn">
+                <i class="fa-solid fa-arrow-right-from-bracket"></i>
+                <span class="imp-banner__btn-text">Revenir au super-admin</span>
+            </a>
+        </div>
     </div>
-    <style>
-        .impersonation-banner {
-            position: sticky; top: 0; z-index: 1000;
-            background: linear-gradient(90deg, #1e293b, #334155);
-            color: #fbbf24;
-            padding: .7rem 1rem;
-            font-size: .85rem;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: .8rem;
-            border-bottom: 2px solid #f59e0b;
-        }
-        .impersonation-banner a {
-            margin-left: auto;
-            background: #f59e0b;
-            color: #1f2937;
-            padding: .3rem .8rem;
-            border-radius: 6px;
-            text-decoration: none;
-            font-weight: 700;
-        }
-        .impersonation-banner a:hover { background: #fbbf24; }
-    </style>
     <?php endif; ?>
 
     <!-- Sidebar -->

@@ -325,3 +325,10 @@
     .waiter-header { padding: 0 var(--space-4); }
     .waiter-clock { display: none; }
 }
+@media (max-width: 480px) {
+    .waiter-header { padding: 0 var(--space-3); }
+    .waiter-header__logo { font-size: .9rem; }
+    .waiter-header__logo span { max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .waiter-header__user { font-size: .8rem; }
+    .waiter-main { padding: var(--space-3); }
+}

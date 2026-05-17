@@ -76,6 +76,80 @@ img { max-width: 100%; display: block; }
 a { color: var(--color-primary); text-decoration: none; }
 button { cursor: pointer; font-family: var(--font-sans); }
 
+/* ─── Banniere mode SAV (impersonation) ─────────────────────────── */
+/* Affichee uniquement quand le super-admin se connecte en tant qu un admin */
+.imp-banner {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 9999;
+    background: linear-gradient(90deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+    color: #fbbf24;
+    border-bottom: 3px solid #f59e0b;
+    box-shadow: 0 4px 12px rgba(0,0,0,.25);
+    font-size: .9rem;
+    font-weight: 600;
+}
+.imp-banner__inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: .6rem 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+.imp-banner__msg {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    flex: 1;
+    min-width: 0;
+}
+.imp-banner__msg i { font-size: 1.1rem; flex-shrink: 0; }
+.imp-banner__msg-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.imp-banner__btn {
+    background: #f59e0b;
+    color: #1f2937;
+    padding: .4rem .9rem;
+    border-radius: 6px;
+    text-decoration: none;
+    font-weight: 700;
+    font-size: .85rem;
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    flex-shrink: 0;
+    transition: background .15s;
+}
+.imp-banner__btn:hover { background: #fbbf24; color: #1f2937; }
+
+/* Quand la banniere est presente, decaler tout le contenu sous elle */
+body.has-imp-banner { padding-top: 52px; }
+
+/* Sur mobile : reduire la taille et compacter */
+@media (max-width: 640px) {
+    .imp-banner__inner {
+        padding: .5rem .75rem;
+        flex-wrap: nowrap;
+    }
+    .imp-banner__msg { gap: .4rem; font-size: .8rem; }
+    .imp-banner__msg-name { display: inline; }
+    .imp-banner__msg-resto { display: none; } /* cacher le nom du resto sur mobile */
+    .imp-banner__btn {
+        padding: .35rem .6rem;
+        font-size: .75rem;
+    }
+    .imp-banner__btn-text { display: none; } /* juste l icone sur mobile */
+    body.has-imp-banner { padding-top: 46px; }
+}
+
 /* ─── Boutons ───────────────────────────────────────────────────── */
 .btn {
     display: inline-flex;

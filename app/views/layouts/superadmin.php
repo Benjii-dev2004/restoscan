@@ -184,13 +184,38 @@
         }
         .sa-form input:focus, .sa-form select:focus { outline: none; border-color: var(--sa-accent); }
         .sa-form__row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-        @media (max-width: 600px) {
-            .sa-main { padding: 1rem; }
-            .sa-form__row { grid-template-columns: 1fr; }
-        }
-        .sa-actions-inline { display: flex; gap: .4rem; flex-wrap: wrap; }
-        .sa-inline-form { display: inline; }
+        .sa-actions-inline { display: flex; gap: .4rem; flex-wrap: wrap; align-items: center; }
+        .sa-inline-form { display: inline-flex; align-items: center; gap: .3rem; }
         .sa-section-title { font-size: .9rem; color: var(--sa-muted); text-transform: uppercase; letter-spacing: .05em; margin: 1.5rem 0 .5rem; font-weight: 700; }
+
+        /* Tableau scrollable horizontal sur mobile */
+        .sa-card { overflow-x: auto; }
+        .sa-table { min-width: 600px; }
+
+        /* ─── Responsive ─────────────────────────────────────────── */
+        @media (max-width: 900px) {
+            .sa-stats { grid-template-columns: repeat(2, 1fr); }
+        }
+        @media (max-width: 640px) {
+            .sa-header { padding: .8rem 1rem; }
+            .sa-header__brand { font-size: 1rem; gap: .4rem; }
+            .sa-header__user { font-size: .8rem; gap: .5rem; }
+            .sa-header__user span { display: none; }
+            .sa-main { padding: 1rem .75rem; }
+            .sa-page-title { font-size: 1.2rem; flex-wrap: wrap; }
+            .sa-form__row { grid-template-columns: 1fr; }
+            .sa-stat { padding: .9rem; }
+            .sa-stat__value { font-size: 1.5rem; }
+            .sa-stat__label { font-size: .75rem; }
+            .sa-card { padding: 1rem; }
+            .sa-card__header { flex-direction: column; align-items: flex-start; gap: .6rem; }
+            .sa-btn { font-size: .8rem; padding: .45rem .8rem; }
+            .sa-btn--sm { padding: .25rem .55rem; font-size: .75rem; }
+        }
+        @media (max-width: 420px) {
+            .sa-stats { grid-template-columns: 1fr; }
+            .sa-logout span { display: none; }
+        }
     </style>
 </head>
 <body>
