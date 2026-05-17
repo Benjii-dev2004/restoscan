@@ -94,17 +94,32 @@
         <div class="login-error"><i class="fa-solid fa-circle-exclamation"></i> <?= View::e($error) ?></div>
         <?php endif; ?>
 
-        <form method="POST" action="<?= View::url('superadmin/login') ?>" class="login-form">
+        <form method="POST" action="<?= View::url('superadmin/login') ?>" class="login-form" autocomplete="off">
             <input type="hidden" name="<?= CSRF_TOKEN_NAME ?>" value="<?= View::e($_SESSION[CSRF_TOKEN_NAME] ?? '') ?>">
 
+            <!-- Champs leurres anti-autofill agressif -->
+            <input type="text" name="fake_user_decoy" style="display:none" tabindex="-1" autocomplete="username">
+            <input type="password" name="fake_pass_decoy" style="display:none" tabindex="-1" autocomplete="current-password">
+
             <label for="email">Email</label>
-            <input type="email" id="email" name="email" required autofocus>
+            <input type="email" id="email" name="email" required autofocus autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
 
             <label for="password">Mot de passe</label>
-            <input type="password" id="password" name="password" required>
+            <input type="password" id="password" name="password" required autocomplete="new-password">
 
             <button type="submit"><i class="fa-solid fa-arrow-right-to-bracket"></i> Se connecter</button>
         </form>
     </div>
+
+    <script>
+        window.addEventListener('load', function() {
+            setTimeout(function() {
+                const e = document.getElementById('email');
+                const p = document.getElementById('password');
+                if (e && !e.matches(':focus')) e.value = '';
+                if (p && !p.matches(':focus')) p.value = '';
+            }, 100);
+        });
+    </script>
 </body>
 </html>

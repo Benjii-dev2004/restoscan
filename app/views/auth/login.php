@@ -134,17 +134,21 @@ $primaryColor = $primary ?? '#e85d04';
             </div>
             <?php endif; ?>
 
-            <form class="login-form" method="POST" action="<?= View::url('auth/login') ?>">
+            <form class="login-form" method="POST" action="<?= View::url('auth/login') ?>" autocomplete="off">
                 <?= View::csrfField() ?>
+
+                <!-- Champs leurres pour bloquer l auto-fill agressif de Chrome -->
+                <input type="text" name="fake_user_decoy" style="display:none" tabindex="-1" autocomplete="username">
+                <input type="password" name="fake_pass_decoy" style="display:none" tabindex="-1" autocomplete="current-password">
 
                 <div class="form-group">
                     <label class="form-label" for="email"><i class="fa-solid fa-envelope"></i> Email</label>
-                    <input type="email" id="email" name="email" class="form-input" placeholder="votre@email.com" required autocomplete="email">
+                    <input type="email" id="email" name="email" class="form-input" placeholder="votre@email.com" required autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
                 </div>
 
                 <div class="form-group">
                     <label class="form-label" for="password"><i class="fa-solid fa-lock"></i> Mot de passe</label>
-                    <input type="password" id="password" name="password" class="form-input" placeholder="••••••••" required autocomplete="current-password">
+                    <input type="password" id="password" name="password" class="form-input" placeholder="••••••••" required autocomplete="new-password">
                 </div>
 
                 <button type="submit" class="btn btn--primary btn--full">
@@ -154,5 +158,17 @@ $primaryColor = $primary ?? '#e85d04';
             </form>
         </div>
     </div>
+
+    <script>
+        // Force les champs a se vider apres le chargement complet (anti-autofill)
+        window.addEventListener('load', function() {
+            setTimeout(function() {
+                const email = document.getElementById('email');
+                const pass  = document.getElementById('password');
+                if (email && !email.matches(':focus')) email.value = '';
+                if (pass  && !pass.matches(':focus'))  pass.value  = '';
+            }, 100);
+        });
+    </script>
 </body>
 </html>
