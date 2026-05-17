@@ -75,8 +75,12 @@ class AdminController extends Controller {
         }
 
         if ($data['nom'] && $data['prix'] > 0 && $data['categorie_id']) {
-            $menuModel = new MenuItem($rid);
-            $menuModel->create($data);
+            try {
+                $menuModel = new MenuItem($rid);
+                $menuModel->create($data);
+            } catch (\InvalidArgumentException $e) {
+                $_SESSION['flash_error'] = 'Categorie invalide.';
+            }
         }
         $this->redirect('/admin/menu');
     }
@@ -104,7 +108,11 @@ class AdminController extends Controller {
             $data['image'] = $this->handleImageUpload($_FILES['image']);
         }
 
-        $menuModel->update((int) $id, $data);
+        try {
+            $menuModel->update((int) $id, $data);
+        } catch (\InvalidArgumentException $e) {
+            $_SESSION['flash_error'] = 'Categorie invalide.';
+        }
         $this->redirect('/admin/menu');
     }
 

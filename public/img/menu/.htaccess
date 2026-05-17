@@ -1,0 +1,21 @@
+# Defense en profondeur : empecher l execution de scripts dans le dossier
+# des images uploadees. Meme si un polyglot JPG/PHP arrive a passer la
+# validation finfo, Apache ne l executera pas.
+
+<FilesMatch "\.(php|php3|php4|php5|php7|phtml|phar|pl|py|cgi|sh)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order deny,allow
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# Forcer l envoi en type "image" pour les fichiers serveis
+<IfModule mod_php.c>
+    php_flag engine off
+</IfModule>
+
+Options -ExecCGI
+RemoveHandler .php .phtml .phar

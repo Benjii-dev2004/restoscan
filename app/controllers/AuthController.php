@@ -7,11 +7,9 @@
 require_once APP_PATH . '/models/User.php';
 require_once APP_PATH . '/models/Restaurant.php';
 require_once APP_PATH . '/models/Setting.php';
+require_once APP_PATH . '/models/LoginAttempt.php';
 
 class AuthController extends Controller {
-
-    private const MAX_ATTEMPTS = 5;
-    private const LOCKOUT_SECS = 900;
 
     public function loginForm(): void {
         // Refuser l acces sans contexte restaurant
@@ -50,20 +48,15 @@ class AuthController extends Controller {
             $this->redirect('/auth/login');
         }
 
-        // Brute force par IP
+        // Brute force PERSISTANT (BDD, pas session : resiste au cookie clearing)
         $ip       = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
-        $lockKey  = 'bf_lock_'  . md5($ip);
-        $countKey = 'bf_count_' . md5($ip);
-        $timeKey  = 'bf_time_'  . md5($ip);
+        $attempts = new LoginAttempt();
 
-        if (!empty($_SESSION[$lockKey])) {
-            $elapsed = time() - ($_SESSION[$timeKey] ?? 0);
-            if ($elapsed < self::LOCKOUT_SECS) {
-                $remaining = (int) ceil((self::LOCKOUT_SECS - $elapsed) / 60);
-                $_SESSION['login_error'] = "Trop de tentatives. Reessayez dans {$remaining} minute(s).";
-                $this->redirect('/auth/login');
-            }
-            unset($_SESSION[$lockKey], $_SESSION[$countKey], $_SESSION[$timeKey]);
+        $remainingSecs = $attempts->getLockoutRemaining($ip, 'user');
+        if ($remainingSecs > 0) {
+            $remainingMin = (int) ceil($remainingSecs / 60);
+            $_SESSION['login_error'] = "Trop de tentatives. Reessayez dans {$remainingMin} minute(s).";
+            $this->redirect('/auth/login');
         }
 
         $email    = filter_input(INPUT_POST, 'email', FILTER_SANITIZE_EMAIL) ?? '';
@@ -78,13 +71,11 @@ class AuthController extends Controller {
         $user      = $userModel->authenticate($email, $password);
 
         if (!$user) {
-            $_SESSION[$countKey] = ($_SESSION[$countKey] ?? 0) + 1;
-            $_SESSION[$timeKey]  = time();
-            if ($_SESSION[$countKey] >= self::MAX_ATTEMPTS) {
-                $_SESSION[$lockKey] = true;
+            $count = $attempts->registerFailure($ip, 'user');
+            if ($count >= $attempts->maxAttempts()) {
                 $_SESSION['login_error'] = 'Trop de tentatives. Compte bloque pendant 15 minutes.';
             } else {
-                $remaining = self::MAX_ATTEMPTS - $_SESSION[$countKey];
+                $remaining = $attempts->maxAttempts() - $count;
                 $_SESSION['login_error'] = "Email ou mot de passe incorrect. ({$remaining} tentative(s) restante(s))";
             }
             $this->redirect('/auth/login');
@@ -96,7 +87,7 @@ class AuthController extends Controller {
             $this->redirect('/auth/login');
         }
 
-        unset($_SESSION[$lockKey], $_SESSION[$countKey], $_SESSION[$timeKey]);
+        $attempts->resetForIp($ip, 'user');
         session_regenerate_id(true);
 
         $_SESSION['user'] = [

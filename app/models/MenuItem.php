@@ -41,6 +41,12 @@ class MenuItem extends Model {
 
     public function create(array $data): int {
         $rid = $this->requireRestaurant();
+        $catId = (int) $data['categorie_id'];
+        // SECURITE : verifier que la categorie appartient bien au resto courant
+        // (empeche un admin de pointer vers une categorie d un autre resto via mass assignment)
+        if (!$this->categoryBelongsToRestaurant($catId, $rid)) {
+            throw new \InvalidArgumentException('categorie_id invalide pour ce restaurant');
+        }
         $this->execute(
             "INSERT INTO menu_items
                 (restaurant_id, categorie_id, nom, description, prix, image,
@@ -48,7 +54,7 @@ class MenuItem extends Model {
              VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
             [
                 $rid,
-                (int)   $data['categorie_id'],
+                $catId,
                         $data['nom'],
                         $data['description'] ?? '',
                 (float) $data['prix'],
@@ -62,13 +68,17 @@ class MenuItem extends Model {
 
     public function update(int $id, array $data): bool {
         $rid = $this->requireRestaurant();
+        $catId = (int) $data['categorie_id'];
+        if (!$this->categoryBelongsToRestaurant($catId, $rid)) {
+            throw new \InvalidArgumentException('categorie_id invalide pour ce restaurant');
+        }
         return $this->execute(
             "UPDATE menu_items
              SET categorie_id = ?, nom = ?, description = ?, prix = ?,
                  image = ?, disponible = ?, temps_preparation = ?
              WHERE id = ? AND restaurant_id = ?",
             [
-                (int)   $data['categorie_id'],
+                $catId,
                         $data['nom'],
                         $data['description'] ?? '',
                 (float) $data['prix'],
@@ -78,6 +88,15 @@ class MenuItem extends Model {
                         $id, $rid,
             ]
         );
+    }
+
+    /** Verifie qu une categorie appartient bien au restaurant courant */
+    private function categoryBelongsToRestaurant(int $categoryId, int $restaurantId): bool {
+        $row = $this->queryOne(
+            "SELECT 1 FROM categories WHERE id = ? AND restaurant_id = ? LIMIT 1",
+            [$categoryId, $restaurantId]
+        );
+        return (bool) $row;
     }
 
     public function toggleAvailability(int $id): bool {

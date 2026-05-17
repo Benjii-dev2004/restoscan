@@ -9,11 +9,9 @@ require_once APP_PATH . '/models/Restaurant.php';
 require_once APP_PATH . '/models/User.php';
 require_once APP_PATH . '/models/Setting.php';
 require_once APP_PATH . '/models/SuperAdminLog.php';
+require_once APP_PATH . '/models/LoginAttempt.php';
 
 class SuperAdminController extends Controller {
-
-    private const MAX_ATTEMPTS = 5;
-    private const LOCKOUT_SECS = 900;
 
     // --- Auth ----------------------------------------------------------------
 
@@ -34,19 +32,15 @@ class SuperAdminController extends Controller {
             $this->redirect('/superadmin/login');
         }
 
+        // Brute force persistant (BDD, scope 'superadmin' pour ne pas melanger avec users)
         $ip       = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
-        $lockKey  = 'sa_bf_lock_'  . md5($ip);
-        $countKey = 'sa_bf_count_' . md5($ip);
-        $timeKey  = 'sa_bf_time_'  . md5($ip);
+        $attempts = new LoginAttempt();
 
-        if (!empty($_SESSION[$lockKey])) {
-            $elapsed = time() - ($_SESSION[$timeKey] ?? 0);
-            if ($elapsed < self::LOCKOUT_SECS) {
-                $rem = (int) ceil((self::LOCKOUT_SECS - $elapsed) / 60);
-                $_SESSION['sa_login_error'] = "Trop de tentatives. Reessayez dans {$rem} minute(s).";
-                $this->redirect('/superadmin/login');
-            }
-            unset($_SESSION[$lockKey], $_SESSION[$countKey], $_SESSION[$timeKey]);
+        $remainingSecs = $attempts->getLockoutRemaining($ip, 'superadmin');
+        if ($remainingSecs > 0) {
+            $rem = (int) ceil($remainingSecs / 60);
+            $_SESSION['sa_login_error'] = "Trop de tentatives. Reessayez dans {$rem} minute(s).";
+            $this->redirect('/superadmin/login');
         }
 
         $email    = filter_input(INPUT_POST, 'email', FILTER_SANITIZE_EMAIL) ?? '';
@@ -54,10 +48,8 @@ class SuperAdminController extends Controller {
 
         $sa = (new SuperAdmin())->authenticate($email, $password);
         if (!$sa) {
-            $_SESSION[$countKey] = ($_SESSION[$countKey] ?? 0) + 1;
-            $_SESSION[$timeKey]  = time();
-            if ($_SESSION[$countKey] >= self::MAX_ATTEMPTS) {
-                $_SESSION[$lockKey] = true;
+            $count = $attempts->registerFailure($ip, 'superadmin');
+            if ($count >= $attempts->maxAttempts()) {
                 $_SESSION['sa_login_error'] = 'Compte bloque pendant 15 minutes.';
             } else {
                 $_SESSION['sa_login_error'] = 'Email ou mot de passe incorrect.';
@@ -65,7 +57,7 @@ class SuperAdminController extends Controller {
             $this->redirect('/superadmin/login');
         }
 
-        unset($_SESSION[$lockKey], $_SESSION[$countKey], $_SESSION[$timeKey]);
+        $attempts->resetForIp($ip, 'superadmin');
         session_regenerate_id(true);
 
         $_SESSION['superadmin'] = [
