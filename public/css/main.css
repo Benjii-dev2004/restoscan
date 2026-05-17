@@ -22,7 +22,7 @@
     --color-surface:  #ffffff;
     --color-border:   #e5e7eb;
     --color-text:     #111827;
-    --color-muted:    #6b7280;
+    --color-muted:    #4b5563; /* darker than #6b7280 for WCAG AA contrast on #f8f5f0 */
 
     /* Typography */
     --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;

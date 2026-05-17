@@ -115,7 +115,7 @@
     <div class="cart-drawer__handle"></div>
     <div class="cart-drawer__header">
         <h3><i class="fa-solid fa-basket-shopping"></i> Mon panier</h3>
-        <button class="cart-drawer__close" onclick="cartClose()">
+        <button class="cart-drawer__close" onclick="cartClose()" aria-label="Fermer le panier">
             <i class="fa-solid fa-xmark"></i>
         </button>
     </div>
