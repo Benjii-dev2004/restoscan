@@ -89,9 +89,13 @@ $qs = function(array $overrides) use ($filters, $page) {
             </tr>
         </thead>
         <tbody>
-            <?php foreach ($orders as $order): ?>
+            <?php foreach ($orders as $order):
+                $numero = (int) ($order['numero_local'] ?? $order['id']);
+            ?>
             <tr>
-                <td><strong>#<?= (int)$order['id'] ?></strong></td>
+                <td><strong>#<?= $numero ?></strong>
+                    <small style="color:#94a3b8;font-size:.7rem">(DB#<?= (int)$order['id'] ?>)</small>
+                </td>
                 <td>Table <?= (int)$order['table_numero'] ?></td>
                 <td><strong><?= View::price((float)$order['total']) ?></strong></td>
                 <td>

@@ -71,9 +71,11 @@ function waiterCard(array $order): string {
     $items = $order['items'] ?? [];
     ob_start();
 ?>
+<?php $numero = (int) ($order['numero_local'] ?? $order['id']); ?>
 <div class="waiter-card" id="wcard-<?= (int)$order['id'] ?>">
     <div class="waiter-card__header">
         <div class="waiter-card__table">
+            <strong>#<?= $numero ?></strong> ·
             <i class="fa-solid fa-table-cells"></i>
             Table <?= (int)$order['table_numero'] ?>
         </div>
@@ -122,10 +124,12 @@ function waiterCardSmall(array $order): string {
     $items = $order['items'] ?? [];
     ob_start();
 ?>
+<?php $numero = (int) ($order['numero_local'] ?? $order['id']); ?>
 <div class="waiter-card-sm" id="wcard-sm-<?= (int)$order['id'] ?>">
     <div class="waiter-card-sm__table">
+        <strong>#<?= $numero ?></strong> ·
         <i class="fa-solid fa-table-cells"></i>
-        Table <?= (int)$order['table_numero'] ?>
+        T<?= (int)$order['table_numero'] ?>
     </div>
     <div class="waiter-card-sm__items">
         <?= implode(', ', array_map(fn($i) => $i['quantite'].'× '.View::e($i['nom']), $items)) ?>

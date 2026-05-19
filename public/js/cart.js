@@ -181,7 +181,7 @@ async function cartSubmit() {
         if (data.success) {
             cartClose();
             cart.clear();
-            showOrderTracker(data.commande_id, data.total);
+            showOrderTracker(data.commande_id, data.total, data.numero_local);
         } else {
             alert(data.error || 'Une erreur est survenue.');
         }
@@ -215,8 +215,12 @@ const STATUS_LABELS = {
 };
 
 /** Appelé après chaque commande validée */
-function showOrderTracker(commandeId, total) {
-    activeOrders.set(commandeId, { statut: 'en_attente', total });
+function showOrderTracker(commandeId, total, numeroLocal) {
+    activeOrders.set(commandeId, {
+        statut: 'en_attente',
+        total,
+        numero: numeroLocal || commandeId,
+    });
     renderOrderCards();
     updateOrdersFab();
     openTracker();
@@ -261,9 +265,10 @@ function renderOrderCards() {
                     </div>`;
         }).join('');
 
+        const displayNum = order.numero || id;
         return `<div class="order-card${isDone ? ' order-card--done' : ''}">
             <div class="order-card__header">
-                <span><i class="fa-solid fa-receipt"></i>&nbsp;Commande&nbsp;#${id}</span>
+                <span><i class="fa-solid fa-receipt"></i>&nbsp;Commande&nbsp;#${displayNum}</span>
                 <span class="order-card__total">${formatPrice(order.total)}</span>
             </div>
             <div class="tracker-steps">${steps}</div>

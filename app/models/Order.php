@@ -9,11 +9,23 @@ class Order extends Model {
 
     public function create(int $tableId, float $total, string $notes = ''): int {
         $rid = $this->requireRestaurant();
+
+        // Calculer le numero_local du jour : MAX(numero_local) + 1 pour ce resto aujourd hui
+        // FOR UPDATE pour eviter une race condition entre 2 commandes simultanees
+        $row = $this->queryOne(
+            "SELECT COALESCE(MAX(numero_local), 0) + 1 AS next_n
+             FROM commandes
+             WHERE restaurant_id = ? AND date_jour = CURDATE()
+             FOR UPDATE",
+            [$rid]
+        );
+        $numeroLocal = (int) ($row['next_n'] ?? 1);
+
         $this->execute(
             "INSERT INTO commandes
-                (restaurant_id, table_id, statut, total, notes, created_at, updated_at)
-             VALUES (?, ?, 'en_attente', ?, ?, NOW(), NOW())",
-            [$rid, $tableId, $total, $notes]
+                (restaurant_id, numero_local, date_jour, table_id, statut, total, notes, created_at, updated_at)
+             VALUES (?, ?, CURDATE(), ?, 'en_attente', ?, ?, NOW(), NOW())",
+            [$rid, $numeroLocal, $tableId, $total, $notes]
         );
         return (int) $this->lastInsertId();
     }
@@ -86,13 +98,21 @@ class Order extends Model {
 
     public function getActiveForKitchen(): array {
         $rid = $this->requireRestaurant();
+        // Tri intelligent :
+        //  - en_attente   : FIFO par created_at (plus ancienne commande d abord)
+        //  - en_preparation : FIFO par updated_at (1ere acceptee d abord, derniere en fin)
         $orders = $this->query(
             "SELECT c.*, t.numero as table_numero
              FROM commandes c
              JOIN tables t ON t.id = c.table_id
              WHERE c.restaurant_id = ?
                AND c.statut IN ('en_attente', 'en_preparation')
-             ORDER BY c.created_at ASC",
+             ORDER BY
+                c.statut ASC,
+                CASE c.statut
+                    WHEN 'en_attente'     THEN c.created_at
+                    WHEN 'en_preparation' THEN c.updated_at
+                END ASC",
             [$rid]
         );
 

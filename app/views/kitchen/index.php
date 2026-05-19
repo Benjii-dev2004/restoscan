@@ -7,13 +7,15 @@
 function renderTicket(array $order, string $nextStatut, string $nextLabel, string $btnClass): string {
     $elapsed = (int) $order['minutes_elapsed'];
     $urgency = $elapsed >= 20 ? 'ticket--urgent' : ($elapsed >= 10 ? 'ticket--warning' : '');
+    $numero  = (int) ($order['numero_local'] ?? $order['id']);
 
     ob_start();
 ?>
 <div class="ticket <?= $urgency ?>" id="ticket-<?= (int)$order['id'] ?>">
     <div class="ticket__header">
         <span class="ticket__table">
-            <i class="fa-solid fa-table-cells"></i> Table <?= (int)$order['table_numero'] ?>
+            <strong>#<?= $numero ?></strong>
+            <i class="fa-solid fa-table-cells"></i> T<?= (int)$order['table_numero'] ?>
         </span>
         <span class="ticket__time">
             <i class="fa-regular fa-clock"></i>

@@ -128,6 +128,8 @@ CREATE TABLE `menu_items` (
 CREATE TABLE `commandes` (
     `id`            INT            NOT NULL AUTO_INCREMENT,
     `restaurant_id` INT            NOT NULL,
+    `numero_local`  INT            NOT NULL DEFAULT 0,
+    `date_jour`     DATE           NOT NULL,
     `table_id`      INT            NOT NULL,
     `statut`        ENUM('en_attente','en_preparation','pret','servi','annule')
                                    NOT NULL DEFAULT 'en_attente',
@@ -136,10 +138,11 @@ CREATE TABLE `commandes` (
     `created_at`    DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at`    DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
-    KEY `idx_resto`      (`restaurant_id`),
-    KEY `fk_cmd_table`   (`table_id`),
-    KEY `idx_cmd_statut` (`statut`),
-    KEY `idx_cmd_date`   (`created_at`),
+    KEY `idx_resto`            (`restaurant_id`),
+    KEY `idx_resto_jour_numero`(`restaurant_id`, `date_jour`, `numero_local`),
+    KEY `fk_cmd_table`         (`table_id`),
+    KEY `idx_cmd_statut`       (`statut`),
+    KEY `idx_cmd_date`         (`created_at`),
     CONSTRAINT `fk_cmd_resto`
         FOREIGN KEY (`restaurant_id`) REFERENCES `restaurants` (`id`) ON DELETE CASCADE,
     CONSTRAINT `fk_cmd_table`

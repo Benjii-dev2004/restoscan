@@ -114,11 +114,14 @@ function buildTicketHtml(order) {
     const nextLabel  = order.statut === 'en_attente' ? 'Accepter' : 'Prêt !';
     const btnClass   = order.statut === 'en_attente' ? 'ticket__btn--accept' : 'ticket__btn--ready';
 
+    const numero = order.numero_local ?? order.id;
+
     return `
         <div class="ticket" id="ticket-${order.id}">
             <div class="ticket__header">
                 <span class="ticket__table">
-                    <i class="fa-solid fa-table-cells"></i> Table ${order.table_numero}
+                    <strong>#${numero}</strong>
+                    <i class="fa-solid fa-table-cells"></i> T${order.table_numero}
                 </span>
                 <span class="ticket__time">
                     <i class="fa-regular fa-clock"></i>
@@ -205,7 +208,8 @@ function moveTicket(commandeId, newStatut) {
     if (targetCol) {
         // Supprimer l'indicateur vide si présent
         targetCol.querySelector('.kanban__empty')?.remove();
-        targetCol.prepend(ticket);
+        // FIFO : nouvellement accepte va EN FIN de file, pas en haut
+        targetCol.appendChild(ticket);
 
         // Animation
         ticket.style.opacity   = '0';

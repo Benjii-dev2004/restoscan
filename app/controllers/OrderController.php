@@ -116,10 +116,15 @@ class OrderController extends Controller {
             throw $e;
         }
 
+        // Recuperer le numero_local affiche au client
+        $newOrder = $orderModel->findByIdGlobal($commandeId);
+        $numeroLocal = (int) ($newOrder['numero_local'] ?? 0);
+
         $this->json([
-            'success'     => true,
-            'commande_id' => $commandeId,
-            'total'       => $total,
+            'success'      => true,
+            'commande_id'  => $commandeId,
+            'numero_local' => $numeroLocal,
+            'total'        => $total,
         ]);
     }
 
@@ -139,10 +144,11 @@ class OrderController extends Controller {
         }
 
         $this->json([
-            'id'     => (int) $commande['id'],
-            'statut' => $commande['statut'],
-            'label'  => View::statusLabel($commande['statut']),
-            'total'  => $commande['total'],
+            'id'           => (int) $commande['id'],
+            'numero_local' => (int) ($commande['numero_local'] ?? 0),
+            'statut'       => $commande['statut'],
+            'label'        => View::statusLabel($commande['statut']),
+            'total'        => $commande['total'],
         ]);
     }
 }
