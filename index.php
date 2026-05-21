@@ -9,6 +9,13 @@
 require_once __DIR__ . '/config/config.php';
 require_once __DIR__ . '/config/database.php';
 
+// Config Oracle Simphony : optionnelle, chargee seulement si presente.
+// Pas de crash si absente : les restos en mode 'standalone' continuent de marcher.
+$oracleConfigFile = __DIR__ . '/config/oracle_config.php';
+if (file_exists($oracleConfigFile)) {
+    require_once $oracleConfigFile;
+}
+
 // ─── Chargement du core MVC ───────────────────────────────────────────────────
 require_once __DIR__ . '/core/Context.php';
 require_once __DIR__ . '/core/Model.php';

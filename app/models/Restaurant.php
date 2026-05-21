@@ -110,6 +110,94 @@ class Restaurant extends Model {
         return $this->execute("DELETE FROM restaurants WHERE id = ?", [$id]);
     }
 
+    // ─── Oracle Simphony : credentials + tokens ─────────────────────────
+
+    /**
+     * Recupere les credentials Oracle d un resto (avec password DECHIFFRE).
+     * Retourne null si le resto n est pas en mode oracle ou config incomplete.
+     */
+    public function getOracleCreds(int $id): ?array {
+        $row = $this->queryOne(
+            "SELECT id, mode_integration, oracle_org_short_name, oracle_loc_ref,
+                    oracle_rvc_ref, oracle_api_username, oracle_api_password_enc,
+                    oracle_id_token, oracle_refresh_token, oracle_token_expires_at,
+                    oracle_password_expires_at, oracle_menu_id, oracle_last_sync
+             FROM restaurants WHERE id = ?",
+            [$id]
+        );
+        if (!$row || $row['mode_integration'] !== 'oracle') return null;
+        if (!$row['oracle_api_username'] || !$row['oracle_api_password_enc']) return null;
+
+        // Dechiffrer le mot de passe
+        require_once ROOT_PATH . '/core/Crypto.php';
+        try {
+            $row['oracle_api_password'] = Crypto::decrypt($row['oracle_api_password_enc']);
+        } catch (\Throwable $e) {
+            error_log('[Restaurant] Echec dechiffrement password Oracle resto ' . $id . ': ' . $e->getMessage());
+            return null;
+        }
+        return $row;
+    }
+
+    /**
+     * Sauvegarder un mot de passe Oracle (chiffrement automatique).
+     * Utilise par le super-admin lors de l onboarding d un client Oracle.
+     */
+    public function setOraclePassword(int $id, string $plainPassword): bool {
+        require_once ROOT_PATH . '/core/Crypto.php';
+        $encrypted = Crypto::encrypt($plainPassword);
+        // Mot de passe Oracle expire tous les 60 jours
+        $expiresAt = date('Y-m-d H:i:s', strtotime('+60 days'));
+        return $this->execute(
+            "UPDATE restaurants
+             SET oracle_api_password_enc = ?,
+                 oracle_password_expires_at = ?
+             WHERE id = ?",
+            [$encrypted, $expiresAt, $id]
+        );
+    }
+
+    /**
+     * Sauvegarder les tokens fraichement obtenus d Oracle.
+     */
+    public function saveOracleTokens(int $id, string $idToken, ?string $refreshToken, int $expiresInSecs): bool {
+        $expiresAt = date('Y-m-d H:i:s', time() + $expiresInSecs);
+        if ($refreshToken) {
+            return $this->execute(
+                "UPDATE restaurants
+                 SET oracle_id_token = ?, oracle_refresh_token = ?,
+                     oracle_token_expires_at = ?
+                 WHERE id = ?",
+                [$idToken, $refreshToken, $expiresAt, $id]
+            );
+        }
+        return $this->execute(
+            "UPDATE restaurants
+             SET oracle_id_token = ?, oracle_token_expires_at = ?
+             WHERE id = ?",
+            [$idToken, $expiresAt, $id]
+        );
+    }
+
+    /** Marquer la derniere synchro reussie avec Oracle */
+    public function markOracleSynced(int $id): bool {
+        return $this->execute(
+            "UPDATE restaurants SET oracle_last_sync = NOW() WHERE id = ?",
+            [$id]
+        );
+    }
+
+    /** Tous les restos en mode Oracle (utilise par le cron) */
+    public function getAllOracleRestaurants(): array {
+        return $this->query(
+            "SELECT id, nom, slug, oracle_api_username, oracle_token_expires_at,
+                    oracle_password_expires_at, gerant_email
+             FROM restaurants
+             WHERE mode_integration = 'oracle'
+               AND statut = 'actif'"
+        );
+    }
+
     /** Stats globales pour le super admin */
     public function globalStats(): array {
         $row = $this->queryOne(
