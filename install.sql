@@ -9,21 +9,34 @@ USE `restoscan`;
 
 -- ─── Restaurants (table maitre du multi-tenant) ───────────────────
 CREATE TABLE `restaurants` (
-    `id`                INT          NOT NULL AUTO_INCREMENT,
-    `nom`               VARCHAR(150) NOT NULL,
-    `slug`              VARCHAR(80)  NOT NULL,
-    `abonnement_debut`  DATETIME     NULL,
-    `abonnement_fin`    DATETIME     NULL,
-    `statut`            ENUM('actif','suspendu','expire') NOT NULL DEFAULT 'actif',
-    `formule`           ENUM('starter','pro','premium')   NOT NULL DEFAULT 'starter',
-    `gerant_email`      VARCHAR(150) NULL,
-    `gerant_telephone`  VARCHAR(30)  NULL,
-    `email_30j_sent`    DATETIME     NULL,
-    `email_7j_sent`     DATETIME     NULL,
-    `email_expire_sent` DATETIME     NULL,
-    `created_at`        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `id`                          INT          NOT NULL AUTO_INCREMENT,
+    `nom`                         VARCHAR(150) NOT NULL,
+    `slug`                        VARCHAR(80)  NOT NULL,
+    `abonnement_debut`            DATETIME     NULL,
+    `abonnement_fin`              DATETIME     NULL,
+    `statut`                      ENUM('actif','suspendu','expire') NOT NULL DEFAULT 'actif',
+    `formule`                     ENUM('starter','pro','premium')   NOT NULL DEFAULT 'starter',
+    `mode_integration`            ENUM('standalone','oracle')       NOT NULL DEFAULT 'standalone',
+    `oracle_org_short_name`       VARCHAR(100) NULL,
+    `oracle_loc_ref`              VARCHAR(100) NULL,
+    `oracle_rvc_ref`              VARCHAR(100) NULL,
+    `oracle_api_username`         VARCHAR(150) NULL,
+    `oracle_api_password_enc`     TEXT         NULL,
+    `oracle_id_token`             TEXT         NULL,
+    `oracle_refresh_token`        TEXT         NULL,
+    `oracle_token_expires_at`     DATETIME     NULL,
+    `oracle_password_expires_at`  DATETIME     NULL,
+    `oracle_menu_id`              VARCHAR(100) NULL,
+    `oracle_last_sync`            DATETIME     NULL,
+    `gerant_email`                VARCHAR(150) NULL,
+    `gerant_telephone`            VARCHAR(30)  NULL,
+    `email_30j_sent`              DATETIME     NULL,
+    `email_7j_sent`               DATETIME     NULL,
+    `email_expire_sent`           DATETIME     NULL,
+    `created_at`                  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
-    UNIQUE KEY `uq_slug` (`slug`)
+    UNIQUE KEY `uq_slug` (`slug`),
+    KEY `idx_mode_integration` (`mode_integration`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ─── Logs des actions super-admin ─────────────────────────────────
@@ -61,6 +74,29 @@ CREATE TABLE `rate_limits` (
     `window_start` DATETIME     NOT NULL,
     PRIMARY KEY (`rl_key`),
     KEY `idx_window` (`window_start`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ─── Oracle Simphony logs (audit complet des appels API) ──────────
+CREATE TABLE `oracle_logs` (
+    `id`             BIGINT       NOT NULL AUTO_INCREMENT,
+    `restaurant_id`  INT          NOT NULL,
+    `operation`      VARCHAR(100) NOT NULL,
+    `endpoint`       VARCHAR(255) NULL,
+    `method`         VARCHAR(10)  NULL,
+    `request_body`   LONGTEXT     NULL,
+    `response_code`  INT          NULL,
+    `response_body`  LONGTEXT     NULL,
+    `duration_ms`    INT          NULL,
+    `success`        TINYINT(1)   NOT NULL DEFAULT 0,
+    `error_message`  TEXT         NULL,
+    `created_at`     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `idx_resto`     (`restaurant_id`),
+    KEY `idx_created`   (`created_at`),
+    KEY `idx_operation` (`operation`),
+    KEY `idx_success`   (`success`),
+    CONSTRAINT `fk_oracle_logs_resto`
+        FOREIGN KEY (`restaurant_id`) REFERENCES `restaurants` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ─── Super admins (toi, le proprietaire de RESTOSCAN) ─────────────

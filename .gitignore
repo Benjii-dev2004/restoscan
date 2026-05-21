@@ -13,8 +13,12 @@
 
 # Fichiers de config locaux (ne jamais committer les secrets)
 /config/config.local.php
+/config/oracle_config.php
 .env
 .env.local
+
+# Mock Oracle - etat local mutable
+/mock-oracle/data/state.json
 
 # Logs
 *.log
